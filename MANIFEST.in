@@ -1,0 +1,4 @@
+include README.md
+include LICENSE
+recursive-include dictatorgenai *.py
+recursive-include tests *.py

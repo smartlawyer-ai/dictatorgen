@@ -1,0 +1,199 @@
+import logging
+import time
+from typing import List, Callable, Any, Generator
+from dictatorgenai.models import NLPModel, Message
+from .command_chain import CommandChain
+from .default_command_chain import DefaultCommandChain
+from .general import General, TaskExecutionError
+from .base_event_manager import BaseEventManager
+from .event_manager import EventManager
+
+
+
+class RegimeExecutionError(TaskExecutionError):
+    """Raised when the entire regime cannot perform the task"""
+
+    pass
+
+
+class Regime:
+    def __init__(
+        self,
+        nlp_model: NLPModel,
+        government_prompt: str,
+        generals: List[General],
+        command_chain: CommandChain = None,
+        event_manager: BaseEventManager = None,
+    ):
+        self.nlp_model = nlp_model
+        self.government_prompt = government_prompt
+        self.generals = generals
+        self.dictator = None
+        self.command_chain = command_chain if command_chain else DefaultCommandChain()
+        self.event_manager = event_manager if event_manager else EventManager()
+        self.logger = logging.getLogger(self.__name__)
+        self.memory: List[Message] = []
+
+    def subscribe(self, event_type: str, listener: Callable[[Any], None]):
+        self.event_manager.subscribe(event_type, listener)
+
+    def publish(self, event_type: str, message: str):
+        self.event_manager.publish(event_type, message)
+
+    def add_to_memory(self, message: Message):
+        self.memory.append(message)
+
+    def run(self, task) -> Generator[str, None, None]:
+        start_time = time.time()
+        dictator, generals_to_use = self.command_chain.select_dictator_and_generals(
+            self.generals, task
+        )
+
+        self.publish("task_started", f"Starting task: {task}")
+        self.add_to_memory({"role": "user", "content": task})
+
+        if dictator and generals_to_use:
+            try:
+                self.perform_coup(general=dictator)
+                self.publish(
+                    "task_update",
+                    f"General {dictator.my_name_is} is attempting to solve the task: {task}",
+                )
+                result_generator = self.command_chain.solve_task(
+                    dictator, generals_to_use, task
+                )
+                result = ""
+                for chunk in result_generator:
+                    result += chunk
+                    yield chunk
+                self.add_to_memory({"role": "assistant", "content": result})
+                self.publish(
+                    "task_completed",
+                    f"General {dictator.my_name_is} solved the task: {result}",
+                )
+                end_time = time.time()
+                return
+            except TaskExecutionError:
+                self.publish(
+                    "task_failed",
+                    f"General {dictator.my_name_is} failed to complete the task.",
+                )
+
+        end_time = time.time()
+        self.publish(
+            "task_failed",
+            f"Task {task} failed to complete in {end_time - start_time:.2f} seconds.",
+        )
+
+        raise RegimeExecutionError(
+            f"All capable generals failed to execute the task: {task}"
+        )
+
+    # def run(self, task) -> Generator[str, None, None]:
+    #     start_time = time.time()
+    #     partially_generals = []
+    #     combined_capabilities = []
+
+    #     self.publish("task_started", f"Starting task: {task}")
+    #     self.add_to_memory({"role": "user", "content": task})
+
+    #     # for general in self.generals:
+    #     #     capability_level = general.can_execute_task(task)
+    #     #     if "result" in capability_level:
+    #     #         if capability_level["result"] == "entirely":
+    #     #             try:
+    #     #                 self.perform_coup(general=general)
+    #     #                 self.publish("task_update", f"General {general.my_name_is} is attempting to solve the task: {task}")
+    #     #                 result_generator = general.solve_task(task)
+    #     #                 result = ''
+    #     #                 for chunk in result_generator:
+    #     #                     result += chunk
+    #     #                     yield chunk
+    #     #                 self.add_to_memory({"role": "assistant", "content": result})
+    #     #                 self.publish("task_completed", f"General {general.my_name_is} solved the task: {result}")
+    #     #                 end_time = time.time()
+    #     #                 return
+    #     #             except TaskExecutionError:
+    #     #                 self.publish("task_failed", f"General {general.my_name_is} failed to complete the task.")
+
+    #     #         elif capability_level["result"] == "partially":
+    #     #             self.publish("task_update", f"General {general.my_name_is} can complete the task partially.")
+    #     #             partially_generals.append(general)
+    #     #             combined_capabilities.extend(general.my_capabilities_are)
+    #     #             if self.can_solve_task_collectively(combined_capabilities, task):
+    #     #                 self.publish("task_update", "The task can be solved collectively by the generals.")
+    #     #                 result_generator = self.solve_task_collectively(partially_generals, task)
+    #     #                 result = ''
+    #     #                 for chunk in result_generator:
+    #     #                     result += chunk
+    #     #                     yield chunk
+    #     #                 self.add_to_memory({"role": "assitant", "content": result})
+    #     #                 self.publish("task_completed", "Generals solved the task.")
+    #     #                 end_time = time.time()
+    #     #                 return
+
+    #     # if len(partially_generals) > 0:
+    #     #     self.publish("task_update", "The task can be partially solved collectively by the generals. we try to solve it")
+    #     #     result_generator = self.solve_task_collectively(partially_generals, task)
+    #     #     result = ''
+    #     #     for chunk in result_generator:
+    #     #         result += chunk
+    #     #         yield chunk
+    #     #     self.add_to_memory({"role": "assitant", "content": result})
+    #     #     self.publish("task_completed", "Generals solved the task.")
+    #     #     end_time = time.time()
+    #     #     return result
+
+    #     end_time = time.time()
+    #     self.publish("task_failed", f"Task {task} failed to complete in {end_time - start_time:.2f} seconds.")
+
+    #     raise RegimeExecutionError(f"All capable generals failed to execute the task: {task}")
+
+    # def create_collective_prompt(self, combined_capabilities, task) -> List[Message]:
+    #     capabilities_str = ", ".join(combined_capabilities)
+    #     messages=[
+    #         {"role": "system", "content":
+    #             f"You are an assitant with this capabilities: {capabilities_str}."
+    #             f"Your goal is to determine if your capabilites and/or roles can solve a given task."
+    #             f"Reply only with 'entirely' or 'partially' or 'no'."
+    #         },
+    #         {"role": "user", "content": f"With your capabilities can you solve the following task: {task}? "}
+    #     ]
+    #     return messages
+
+    # def can_solve_task_collectively(self, combined_capabilities, task):
+    #     prompt = self.create_collective_prompt(combined_capabilities, task)
+    #     evaluation = self.nlp_model.chat_completion(prompt)
+    #     if evaluation == "entirely":
+    #         #self.can_perform_coup()
+    #         return True
+    #     return False
+
+    # def solve_task_collectively(self, generals, task) -> Generator[str, None, None]:
+    #     combined_capabilities = [cap for general in generals for cap in general.my_capabilities_are]
+    #     messages = [
+    #         {"role": "system", "content": f"You are an assistant with these collective capabilities: {', '.join(combined_capabilities)}. You solve the given task."},
+    #         {"role": "user", "content": f"The task to resolve is '{task}'"}
+    #     ]
+    #     return self.nlp_model.stream_chat_completion(messages)
+
+    def can_perform_coup(self):
+        for general in self.generals:
+            if general != self.dictator and general.can_perform_coup():
+                self.generals.remove(general)
+                self.generals.insert(0, general)
+                self.dictator = general
+                self.logger.info(
+                    f"{general.my_name_is} is performing a coup d'état and becoming the new dictator."
+                )
+                return general
+
+    def perform_coup(self, general):
+        if general != self.dictator:
+            self.generals.remove(general)
+            self.generals.insert(0, general)
+            self.dictator = general
+            self.logger.info(
+                f"{general.my_name_is} is performing a coup d'état and becoming the new dictator."
+            )
+            return general
