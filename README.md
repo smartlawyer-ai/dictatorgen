@@ -1,17 +1,18 @@
 # DictatorGenAI Framework
-![Diagramme de l'architecture](assets/dictator.png)
+
+![DictatorGenAI Logo](images/dictatorgenai_logo.png)
 
 ## Introduction
 
-**DictatorGenAI** est un framework innovant multi-agent conçu pour faciliter les interactions efficaces entre les humains et les agents d'IA. Inspiré par les hiérarchies organisationnelles, le framework vous permet de simuler un régime où un **dictateur** (agent principal) et des **généraux** (agents de soutien) collaborent pour résoudre des tâches complexes. Chaque agent possède des capacités et une expertise uniques, permettant au système de sélectionner les agents les plus adaptés pour une tâche donnée.
+**DictatorGenAI** is an innovative multi-agent framework designed to facilitate effective interactions between humans and AI agents. Inspired by organizational hierarchies, the framework allows you to simulate a regime where a **dictator** (main agent) and **generals** (supporting agents) collaborate to solve complex tasks. Each agent possesses unique capabilities and expertise, enabling the system to select the most suitable agents for a given task.
 
-## Fonctionnalités
+## Features
 
-- **Collaboration Multi-Agent** : Simulez des interactions entre plusieurs agents d'IA avec des compétences spécialisées.
-- **Sélection Dynamique des Agents** : Sélectionnez et privilégiez automatiquement les agents en fonction de leur pertinence pour la tâche.
-- **Structure Hiérarchique** : Implémentez une chaîne de commandement avec des dictateurs et des généraux pour une exécution organisée des tâches.
-- **Gestion des Événements** : Abonnez-vous à des événements tels que le début, la mise à jour, l'achèvement et l'échec des tâches.
-- **Agents Personnalisables** : Définissez des agents avec des capacités spécifiques et intégrez différents modèles NLP.
+- **Multi-Agent Collaboration**: Simulate interactions between multiple AI agents with specialized skills.
+- **Dynamic Agent Selection**: Automatically select and prioritize agents based on their relevance to the task.
+- **Hierarchical Structure**: Implement a command chain with dictators and generals for organized task execution.
+- **Event Management**: Subscribe to events such as task start, update, completion, and failure.
+- **Customizable Agents**: Define agents with specific capabilities and integrate different NLP models.
 
 ## Installation
 
