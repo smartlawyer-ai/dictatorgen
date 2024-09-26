@@ -1,7 +1,5 @@
-![Diagramme de l'architecture](assets/dictator.png)
 # DictatorGenAI Framework
-
-![DictatorGenAI Logo](images/dictatorgenai_logo.png)
+![Diagramme de l'architecture](assets/dictator.png)
 
 ## Introduction
 
