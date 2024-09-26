@@ -1,0 +1,1 @@
+![Diagramme de l'architecture](assets/dictator.png)
