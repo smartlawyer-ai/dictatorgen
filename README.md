@@ -1,6 +1,6 @@
 # DictatorGenAI Framework
 
-![DictatorGenAI Logo](images/dictatorgenai_logo.png)
+![DictatorGenAI Logo](assets/dictator.png)
 
 ## Introduction
 
