@@ -1,39 +1,43 @@
 # dictatorgenai/__init__.py
 
-from .core.base_agent import BaseAgent
-from .core.dictator import Dictator
-from .core.general import General, TaskExecutionError
-from .core.regime import Regime, RegimeExecutionError
-from .core.coup_condition import (
-    CoupCondition,
-    FailedAttemptsCondition,
-    SpecificTaskFailureCondition,
-)
-from .core.command_chain import CommandChain
-from .core.default_command_chain import DefaultCommandChain
+from .agents.base_agent import BaseAgent
+from .agents.tool import tool
+from .agents.dictator import Dictator
+from .agents.general import General, TaskExecutionError
+from .regimes.regime import Regime, RegimeExecutionError
+from .command_chains.command_chain import CommandChain
+from .command_chains.default_command_chain import DefaultCommandChain
+from .conversations.base_conversation import BaseConversation
+from .conversations.group_chat import GroupChat
+from .conversations.nested_chat import NestedChat
+from .conversations.sequential_chat import SequentialChat
+from .conversations.two_agent_chat import TwoAgentChat
+from .events import BaseEventManager, EventManager, Event
+from .models.base_model import BaseModel, Message
+from .models.openai_model import OpenaiModel
 
-from .models.nlp_model import NLPModel, Message
-from .models.sbert_model import SBERTModel
-from .models.qabert_model import QABERTModel
-from .models.distilbert_model import DistilBERTModel
-from .models.gpt3_model import GPT3Model
 
 __all__ = [
     "BaseAgent",
+    "tool",
     "Dictator",
     "General",
     "TaskExecutionError",
     "Regime",
     "RegimeExecutionError",
-    "CoupCondition",
     "FailedAttemptsCondition",
     "SpecificTaskFailureCondition",
     "CommandChain",
     "DefaultCommandChain",
-    "NLPModel",
-    "SBERTModel",
-    "QABERTModel",
-    "DistilBERTModel",
-    "GPT3Model",
+    "BaseModel",
+    "OpenaiModel",
     "Message",
+    "BaseConversation",
+    "GroupChat",
+    "NestedChat",
+    "SequentialChat",
+    "TwoAgentChat",
+    "BaseEventManager",
+    "EventManager",
+    "Event",
 ]

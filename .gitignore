@@ -3,7 +3,9 @@ __pycache__/
 *.pyo
 *.pyd
 build/
+docs/
 dist/
 *.egg-info/
 .venv/
 dictatorgenai/examples/example_usage.py
+.env
