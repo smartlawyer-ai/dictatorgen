@@ -27,7 +27,7 @@ class Regime:
         self.government_prompt = government_prompt
         self.generals = generals
         self.dictator = None
-        self.command_chain = command_chain if command_chain else DefaultCommandChain()
+        self.command_chain = command_chain if command_chain else DefaultCommandChain(nlp_model=self.nlp_model)
         self.event_manager = event_manager if event_manager else EventManager()
         self.logger = logging.getLogger(self.__class__.__name__)
         self.memory: List[Message] = []
