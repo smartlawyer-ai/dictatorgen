@@ -5,7 +5,7 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../.
 
 from dictatorgenai import General
 from dictatorgenai import Regime, RegimeExecutionError
-from dictatorgenai import GPT3Model
+from dictatorgenai import OpenaiModel
 
 logging.basicConfig(
     level=logging.INFO,
@@ -18,7 +18,7 @@ if not api_key:
     raise ValueError("Veuillez définir la variable d'environnement OPENAI_API_KEY avec votre clé API OpenAI.")
 
 # Création du modèle NLP en utilisant la clé API depuis les variables d'environnement
-nlp_model = GPT3Model(api_key=api_key)
+nlp_model = OpenaiModel(api_key=api_key)
 
 # Création des agents (généraux en médecine) avec les nouveaux attributs
 general1 = General(

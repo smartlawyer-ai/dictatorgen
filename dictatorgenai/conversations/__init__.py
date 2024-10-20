@@ -1,15 +1,15 @@
 # dictatorgenai/conversations/__init__.py
 
-from .BaseConversation import BaseConversation
-from .GroupChat import GroupChat
-from .NestedChat import NestedChat
-from .SequentialChat import SequentialChat
-from .TwoAgentChat import TwoAgentChat
+from .base_conversation import BaseConversation
+from .group_chat import GroupChat
+from .nested_chat import NestedChat
+from .sequential_chat import SequentialChat
+from .two_agent_chat import TwoAgentChat
 
 __all__ = [
-    "BaseConversation",
-    "GroupChat",
-    "NestedChat",
-    "SequentialChat",
-    "TwoAgentChat"
+    "base_conversation",
+    "group_chat",
+    "nested_chat",
+    "sequential_chat",
+    "two_agent_chat"
 ]

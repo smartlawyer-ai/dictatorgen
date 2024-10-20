@@ -1,9 +1,9 @@
 from openai import OpenAI
-from .nlp_model import Message, NLPModel
+from .base_model import Message, BaseModel
 from typing import Any, Generator, List
 
 
-class GPT3Model(NLPModel):
+class OpenaiModel(BaseModel):
     def __init__(self, api_key):
         self.client = OpenAI(api_key=api_key)
 
