@@ -7,7 +7,7 @@ class Message(TypedDict):
     content: str
 
 
-class NLPModel(ABC):
+class BaseModel(ABC):
     @abstractmethod
     def chat_completion(self, messages: List[Message]) -> str:
         pass
