@@ -17,7 +17,7 @@ class BaseAgent(ABC):
         tools (Dict[str, Callable]): Dictionary of registered tools for the agent.
     """
 
-    def __init__(self, my_name_is: str, tools = None):
+    def __init__(self, my_name_is: str, my_capabilities_are: List[str], tools = None):
         """
         Initializes the BaseAgent with the given name.
 
@@ -25,6 +25,7 @@ class BaseAgent(ABC):
             my_name_is (str): The name of the agent.
         """
         self.my_name_is = my_name_is
+        self.my_capabilities_are = my_capabilities_are
         self.failed_attempts = 0
         self.conversation_history: List[Dict] = []  # Track the message history
         self.logger = logging.getLogger(self.my_name_is)

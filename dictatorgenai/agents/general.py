@@ -23,10 +23,9 @@ class General(BaseAgent):
         coup_conditions=None,
         tools=None,
     ):
-        super().__init__(my_name_is, tools=tools)
+        super().__init__(my_name_is, my_capabilities_are=my_capabilities_are ,tools=tools)
         self.my_name_is = my_name_is
         self.iam = iam
-        self.my_capabilities_are = my_capabilities_are
         self.nlp_model = nlp_model
         self.coup_conditions = coup_conditions if coup_conditions else []
         self.conversation_history: List[Dict] = [] 
@@ -110,6 +109,7 @@ class General(BaseAgent):
 
 
     async def _execute_tool(self, function_name: str, arguments: Dict) -> str:
+        print('execute tool', function_name, arguments)
         """
         Executes a tool based on its name and the provided arguments.
 

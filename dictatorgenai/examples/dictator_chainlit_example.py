@@ -2,6 +2,16 @@ import asyncio
 import logging
 import sys
 import os
+from openinference.instrumentation.openai import OpenAIInstrumentor
+from openai import OpenAI
+from phoenix.otel import register
+
+tracer_provider = register(
+  project_name="smartlawyer 2",
+  endpoint="http://localhost:6006/v1/traces"
+)
+OpenAIInstrumentor().instrument(tracer_provider=tracer_provider)
+
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
 
 from dictatorgenai import General, tool
@@ -28,8 +38,13 @@ if not api_key:
         "OPENAI_API_KEY is not set in the environment. Please set it before running the script."
     )
 
+client = OpenAI()
+conversation =[{"role": "system", "content": "just reply"}, {"role": "user", "content": "I need help with a legal issue."}]
+
+#response = client.chat.completions.create(model= "gpt-4o-mini", messages=conversation)
 # Création du modèle NLP
 nlp_model = OpenaiModel(api_key=api_key)
+
 
 # Modèle Pydantic pour les paramètres
 
@@ -237,6 +252,7 @@ regime.subscribe("task_update", on_task_updated)
 @cl.on_message
 async def main(message: cl.Message):
         try:
+            response = await nlp_model.chat_completion(messages=conversation)
             msg = cl.Message(content="")
             
             response_chunks = regime.chat(message.content)

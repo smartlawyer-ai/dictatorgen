@@ -91,7 +91,6 @@ class DefaultCommandChain(CommandChain):
             """Helper function to evaluate a general asynchronously."""
             print('evaluate', general.my_name_is)
             capability_level = await general.can_execute_task(task)
-            #print('general reply', general.my_name_is)
             result = capability_level.get("result")
             confidence = capability_level.get("confidence", 0)
             details = capability_level.get("details", [])
@@ -100,6 +99,7 @@ class DefaultCommandChain(CommandChain):
         # Run evaluations in parallel for all generals
         evaluations = await asyncio.gather(*(evaluate_general(g) for g in generals))
 
+        # Process evaluations
         for general, result, confidence, details in evaluations:
             if result == "entirely":
                 # If any general can solve the task entirely, select them as Dictator
@@ -116,35 +116,48 @@ class DefaultCommandChain(CommandChain):
                 # Update combined capabilities
                 combined_capabilities.update({detail.get("capability") for detail in details})
 
-                # If we have multiple partial generals, check if combined capabilities cover the task
-                if len(selected_generals) > 1:
-                    capabilities_check = await self.capabilities_cover_task(combined_capabilities, task)
-                    print('capabilities_check', capabilities_check)
-                    print('confidence', sum(float(c) for c in capabilities_check["confidence_capabilities"].values()))
-                    if sum(float(c) for c in capabilities_check["confidence_capabilities"].values()) >= self.confidence_threshold: #capabilities_check["result"] == "true" and \ this part doesn't work
-                        # Calculate contributions of each general
-                        general_contributions = []
-                        for general_info in general_capabilities:
-                            capabilities = general_info["capabilities"]
-                            contribution_score = sum([
-                                float(capabilities_check["confidence_capabilities"].get(cap, 0))
-                                for cap in capabilities
-                            ])
-                            general_contributions.append({
-                                "general": general_info["general"],
-                                "contribution_score": contribution_score,
-                                "confidence": general_info["confidence"]
-                            })
+        # Check combined capabilities after evaluating all generals
+        if len(selected_generals) > 1:
+            # Construire confidence_capabilities directement
+            confidence_capabilities = {
+                cap: max(
+                    float(info["confidence"])  # Utiliser la confiance individuelle
+                    for info in general_capabilities
+                    if cap in info["capabilities"]
+                )
+                for cap in combined_capabilities
+            }
 
-                        # Select the best general as Dictator
-                        best_general = max(general_contributions, key=lambda x: x["contribution_score"])
-                        dictator = best_general["general"]
-                        other_generals = [g["general"] for g in general_contributions if g["general"] != dictator]
+            # Calculer combined_confidence
+            combined_confidence = sum(confidence_capabilities.values()) / len(confidence_capabilities)
+            print('confidence', combined_confidence)
 
-                        return dictator, other_generals
+            if combined_confidence >= self.confidence_threshold:
+                # Calculer les contributions
+                general_contributions = []
+                for general_info in general_capabilities:
+                    capabilities = general_info["capabilities"]
+                    contribution_score = sum([
+                        float(confidence_capabilities.get(cap, 0))  # Utilise confidence_capabilities
+                        for cap in capabilities
+                    ]) / len(combined_capabilities)
+                    general_contributions.append({
+                        "general": general_info["general"],
+                        "contribution_score": contribution_score,
+                        "confidence": general_info["confidence"]
+                    })
 
-        # If no group of generals can solve the task
+                # Sélectionner le meilleur général comme Dictateur
+                best_general = max(general_contributions, key=lambda x: x["contribution_score"])
+                dictator = best_general["general"]
+                other_generals = [g["general"] for g in general_contributions if g["general"] != dictator]
+
+                return dictator, other_generals
+
+        # Si aucun groupe de généraux ne peut résoudre la tâche
         raise TaskExecutionError("No group of generals is capable of executing the task.")
+
+
 
     async def solve_task(
         self,
