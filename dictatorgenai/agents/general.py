@@ -18,7 +18,7 @@ class General(BaseAgent):
         self,
         my_name_is: str,
         iam: str,
-        my_capabilities_are: List[str],
+        my_capabilities_are: List[Dict[str, str]],
         nlp_model: BaseModel,
         coup_conditions=None,
         tools=None,
@@ -33,7 +33,9 @@ class General(BaseAgent):
         self.logger = logging.getLogger(self.my_name_is)
 
     def build_capabilities_prompt(self, task: str) -> List[Message]:
-        capabilities_str = ", ".join(self.my_capabilities_are)
+        capabilities_str = "\n".join(
+            [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
+        )
         messages = [
             {
                 "role": "system",
@@ -198,12 +200,15 @@ class General(BaseAgent):
         """
         Analyse un message reçu et utilise les outils si nécessaire.
         """
+        capabilities_str = "\n".join(
+            [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
+        )
         initial_messages = [
             {
                 "role": "system",
                 "content": (
                     f"My name is {self.my_name_is}. I am {self.iam}.\n"
-                    f"My capabilities include: {', '.join(self.my_capabilities_are)}.\n"
+                    f"My capabilities include: {capabilities_str}.\n"
                     f"I have received the following message from {sender.my_name_is}: \n'{message}'.\n"
                     "Please analyze this message and use available tools if needed.\n"
                 ),
@@ -217,7 +222,9 @@ class General(BaseAgent):
         """
         Résout une tâche en utilisant les outils disponibles, puis diffuse la réponse finale en streaming.
         """
-        my_capabilities_str = ", ".join(self.my_capabilities_are)
+        capabilities_str = "\n".join(
+            [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
+        )
         messages = [
             {
                 "role": "system",

@@ -17,7 +17,7 @@ class BaseAgent(ABC):
         tools (Dict[str, Callable]): Dictionary of registered tools for the agent.
     """
 
-    def __init__(self, my_name_is: str, my_capabilities_are: List[str], tools = None):
+    def __init__(self, my_name_is: str, my_capabilities_are: List[Dict[str, str]], tools = None):
         """
         Initializes the BaseAgent with the given name.
 
