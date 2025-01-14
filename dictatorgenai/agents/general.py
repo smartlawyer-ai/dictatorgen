@@ -3,14 +3,40 @@ import logging
 from typing import AsyncGenerator, List, Dict, Generator, Optional
 
 from pydantic import ValidationError
+
+from dictatorgenai.utils.task import Task 
 from .base_agent import BaseAgent
 from dictatorgenai.models import BaseModel, Message
+from dictatorgenai.config import DictatorSettings
 import json
 import re
 
 
 class TaskExecutionError(Exception):
-    pass
+    """
+    Custom exception raised when a task execution fails.
+    
+    Attributes:
+        message (str): The error message describing the reason for failure.
+        clarification_request (str): The clarification message sent to the user.
+    """
+    def __init__(self, message: str, clarification_request: str = None):
+        """
+        Initialize the TaskExecutionError with a message and an optional clarification request.
+
+        Args:
+            message (str): The error message.
+            clarification_request (str, optional): The clarification message sent to the user.
+        """
+        super().__init__(message)
+        self.clarification_request = clarification_request
+
+    def __str__(self):
+        base_message = super().__str__()
+        if self.clarification_request:
+            return f"{base_message}\nClarification Request: {self.clarification_request}"
+        return base_message
+
 
 
 class General(BaseAgent):
@@ -22,45 +48,69 @@ class General(BaseAgent):
         nlp_model: BaseModel,
         coup_conditions=None,
         tools=None,
+        is_dictator: bool = False,
     ):
         super().__init__(my_name_is, my_capabilities_are=my_capabilities_are ,tools=tools)
         self.my_name_is = my_name_is
         self.iam = iam
         self.nlp_model = nlp_model
         self.coup_conditions = coup_conditions if coup_conditions else []
+        self.is_dictator = is_dictator
         self.conversation_history: List[Dict] = [] 
         self.failed_attempts = 0
         self.logger = logging.getLogger(self.my_name_is)
 
-    def build_capabilities_prompt(self, task: str) -> List[Message]:
-        capabilities_str = "\n".join(
-            [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
-        )
-        messages = [
-            {
-                "role": "system",
-                "content": (
-                    f"My name is {self.my_name_is}. I am {self.iam}. "
-                    f"My capabilities are: {capabilities_str}. "
-                    f"My goal is to determine if my capabilities and/or roles can solve a given task. "
-                    f"Format the response as JSON with the keys 'result', 'confidence', and 'details'. "
-                    f"The 'result' key should have the value 'entirely', 'partially', or 'no'. "
-                    f"The 'confidence' key should represent your confidence level in executing the task, "
-                    f"as a float between 0 and 1. "
-                    f"Give a blank array for 'details' if the result is 'no'. "
-                    f"If the result is 'partially', the 'details' key should be an array of objects, "
-                    f"each with a 'capability' key and an explanation. Provide a brief explanation for each capability."
-                ),
-            },
-            {
-                "role": "user",
-                "content": f"With your capabilities, can you solve the following task: {task}?",
-            },
+    def build_capabilities_prompt(self, task: Task) -> List[Message]:
+        """
+        Construit un prompt pour évaluer si les capacités de l'agent sont suffisantes pour résoudre une tâche donnée
+        avec le contexte associé.
+
+        Args:
+            task (Task): L'objet Task contenant la demande et le contexte de discussion.
+
+        Returns:
+            List[Message]: Une liste de messages structurés pour l'évaluation des capacités.
+        """
+        
+        # Construire le contexte de la discussion
+        context_messages = [
+            {"role": msg["role"], "content": msg["content"]} for msg in task.context
         ]
+        reply_language = f"Provide details in {DictatorSettings.get_language()} language."
+        
+        # Ajouter les informations de base au début du prompt
+        system_message = {
+            "role": "system",
+            "content": (
+                f"My name is {self.my_name_is}. I am {self.iam}. "
+                "I have the following capabilities:\n" +
+                "\n".join([f"- {cap['capability']}: {cap.get('description', 'No description provided')}" 
+                        for cap in self.my_capabilities_are]) +
+                "\n\nBased on the context of the discussion and the user's latest request, "
+                "determine if I can solve the task / user's latest input. Evaluate my capabilities against the latest user input.\n"
+                "Reply in JSON format with 'result', 'confidence', and 'details'.\n"
+                "'result' should be 'entirely', 'partially', or 'no'.\n"
+                "'confidence' is a float between 0 and 1.\n"
+                "If 'result' is 'partially' or 'entirely', provide an array of objects in 'details', "
+                "each with 'capability' and 'explanation'.\n"
+                f"{reply_language}"
+            )
+        }
+        
+        # Ajouter la tâche spécifique comme dernière demande utilisateur
+        task_message = {
+            "role": "user",
+            "content": f"{task.request}",
+        }
+        
+        # Combiner les messages dans l'ordre
+        messages = [system_message] + context_messages + [task_message]
+        
         return messages
 
-    async def can_execute_task(self, task: str) -> Dict:
-        prompt = self.build_capabilities_prompt(task)
+
+    async def can_execute_task(self, task: Task) -> Dict:
+        prompt = self.build_capabilities_prompt(task=task)
         try:
             response = await self.nlp_model.chat_completion(
                 prompt, tools=[], response_format={"type": "json_object"}
@@ -68,7 +118,7 @@ class General(BaseAgent):
             message = response.message
             evaluation = json.loads(getattr(message, "content", ""))
             self.logger.debug(
-                f"Evaluating task: {task} with prompt: {prompt} - Result: {evaluation}"
+                f"Evaluating task: {task.request} with prompt: {prompt} - Result: {evaluation}"
             )
             return evaluation
         except json.JSONDecodeError as e:
@@ -83,7 +133,7 @@ class General(BaseAgent):
             ) from e
     
     # Making the agent communicate with others
-    async def send_message(self, recipient: 'General', message: str) -> str:
+    async def send_message(self, recipient: 'General', message: str, task: Task) -> str:
         # Store the outgoing message in the conversation history
         self.conversation_history.append({
             "role": "sender",
@@ -91,9 +141,9 @@ class General(BaseAgent):
             "message": message
         })
         self.logger.debug(f"{self.my_name_is} sends message to {recipient.my_name_is}: {message}")
-        return await recipient.receive_message(self, message)
+        return await recipient.receive_message(self, message, task=task)
 
-    async def receive_message(self, sender: 'General', message: str) -> str:
+    async def receive_message(self, sender: 'General', message: str, task: Task) -> str:
         # Store the incoming message in the conversation history
         self.conversation_history.append({
             "role": "receiver",
@@ -102,7 +152,7 @@ class General(BaseAgent):
         })
         self.logger.debug(f"{self.my_name_is} received message from {sender.my_name_is}: {message}")
         # Process the message and formulate a reply
-        reply = await self.process_message(sender, message)
+        reply = await self.process_message(sender, message, task=task)
         return reply
 
     # def process_message(self, sender: 'General', message: str) -> str:
@@ -196,45 +246,97 @@ class General(BaseAgent):
                     yield getattr(message, "content", "")
                     break
 
-    async def process_message(self, sender: 'General', message: str) -> str:
+    async def process_message(self, sender: 'General', message: str, task: Task) -> str:
         """
-        Analyse un message reçu et utilise les outils si nécessaire.
+        Analyse un message reçu et utilise les outils si nécessaire en prenant en compte le contexte de la discussion.
+        
+        Args:
+            sender (General): L'agent qui a envoyé le message.
+            message (str): Le message reçu.
+            task (Task): L'objet Task contenant la requête et le contexte de discussion.
+        
+        Returns:
+            str: La réponse complète après traitement.
         """
         capabilities_str = "\n".join(
             [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
         )
+        reply_language = f"Reply in {DictatorSettings.get_language()} language."
+
+        # Construire le contexte à partir de la discussion
+        context_messages = [
+            {"role": msg["role"], "content": msg["content"]} for msg in task.context
+        ]
+
+        # Ajouter le message reçu et les informations de base
         initial_messages = [
             {
                 "role": "system",
                 "content": (
                     f"My name is {self.my_name_is}. I am {self.iam}.\n"
-                    f"My capabilities include: {capabilities_str}.\n"
-                    f"I have received the following message from {sender.my_name_is}: \n'{message}'.\n"
-                    "Please analyze this message and use available tools if needed.\n"
+                    f"You have been selected to contribute to the task given by last user message.\n"
+                    f"Your capabilities are :\n"
+                    f"{capabilities_str}\n\n"
+                    f"{reply_language}\n"
+                    "Focus strictly on these capabilities and their details. Please analyze the message "
+                    "in the context of the discussion and provide your response accordingly. Use available tools if needed.\n"
                 ),
-            },
+            }
         ]
-        async for response in self._process_with_tools(initial_messages, streaming=False):
+
+        # Combiner contexte, message initial, et tâche
+        all_messages = initial_messages + context_messages + [
+            {"role": "user", "content": message}
+        ]
+
+        # Traitement avec les outils
+        async for response in self._process_with_tools(all_messages, streaming=False):
             return response  # Retourne la réponse complète sans streaming
 
 
-    async def solve_task(self, task: str) -> AsyncGenerator[str, None]:
+
+    async def solve_task(self, task: Task) -> AsyncGenerator[str, None]:
         """
-        Résout une tâche en utilisant les outils disponibles, puis diffuse la réponse finale en streaming.
+        Résout une tâche en utilisant les outils disponibles, en tenant compte des messages assistants
+        si l'agent est un dictateur, puis diffuse la réponse finale en streaming.
         """
+        role_description = (
+            "As the dictator, your role is to lead and coordinate the resolution of this task, leveraging the inputs and support of your generals."
+            if self.is_dictator
+            else "As a general, your role is to provide expertise and utilize your capabilities to contribute to the resolution of this task."
+        )
         capabilities_str = "\n".join(
             [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
         )
+        reply_language = f"Reply in {DictatorSettings.get_language()} language."
+        
+        # Ajouter les messages assistants si l'agent est un dictateur
+        assistant_messages = [
+            {"role": msg["role"], "content": msg["content"]}
+            for msg in task.context
+            if msg["role"] == "assistant" or msg["role"] == "user"
+        ]
+        
+        # Construire les messages contextuels
         messages = [
             {
                 "role": "system",
                 "content": (
                     f"My name is {self.my_name_is}. I am {self.iam}. "
-                    f"My capabilities include: {my_capabilities_str}. "
-                    f"I am tasked with solving the following task."
+                    f"My capabilities include: {capabilities_str}. "
+                    f"{role_description} "
+                    f"{reply_language}\n"
+                    f"Your task is to resolve the user's latest request based on the combined expertise and context provided. "
+                    f"Do not reference individual assistants or their contributions explicitly. "
+                    f"Provide a single, cohesive response as if all expertise was directly available to you.\n\n"
+                    f"Focus solely on resolving the latest user request while incorporating all relevant details from the discussion and assistant messages."
                 ),
             },
-            {"role": "user", "content": f"The task to resolve is: '{task}'"},
+            *[
+                {"role": "assistant", "content": msg["content"]}
+                for msg in assistant_messages  # Inclure les messages assistants anonymisés
+            ],
+            {"role": "user", "content": f"The latest task/request to resolve is: '{task.request}'"},
         ]
 
         tools_definitions = self.generate_tool_schemas()
@@ -244,10 +346,9 @@ class General(BaseAgent):
             response = await self.nlp_model.chat_completion(messages, tools=tools_definitions)
             message = response.message
             tool_calls = getattr(message, "tool_calls", None)
-            #if response.get("finish_reason") == "stop":
-                #break
 
             if tool_calls:
+                messages.append(message)
                 for call in tool_calls:
                     function = call.function
                     call_id = call.id
@@ -262,8 +363,6 @@ class General(BaseAgent):
                     try:
                         result = await self._execute_tool(function_name, arguments)
                         # Append the tool's result to the messages
-                        #messages.append({"role": getattr(message, "role", "tool"), "tool_calls": tool_calls})
-                        messages.append(message)
                         messages.append({"role": "tool", "content": json.dumps(result), "tool_call_id": call_id})
                     except Exception as e:
                         self.logger.error(f"Error executing tool {function_name}: {e}")
@@ -273,6 +372,7 @@ class General(BaseAgent):
                 async for chunk in self.nlp_model.stream_chat_completion(messages):
                     yield chunk  # Diffuse chaque fragment de la réponse au fur et à mesure
                 break
+
 
 
     
@@ -310,29 +410,20 @@ class General(BaseAgent):
     def can_perform_coup(self) -> bool:
         prompt = self.build_prompt("Can you perform a coup?")
         return self.nlp_model.can_perform_coup(prompt)
+    
+    def perform_coup_detat(self, is_dictator: bool):
+        """
+        Définit ou réinitialise le rôle de dictator pour le général.
+
+        Args:
+            is_dictator (bool): True pour définir le général comme dictator, False pour le réinitialiser.
+        """
+        self.is_dictator = is_dictator
+        role = "Dictator" if is_dictator else "General"
+        self.logger.info(f"{self.my_name_is} has been set as {role}.")
 
     def report_failure(self, task: str = None):
         self.failed_attempts += 1
         if task:
             self.logger.warning(f"Failed task: {task}")
 
-
-
-
-    # async def solve_task(self, task: str) -> AsyncGenerator[str, None]:
-    #     my_capabilities_str = ", ".join(self.my_capabilities_are)
-    #     messages = [
-    #         {
-    #             "role": "system",
-    #             "content": (
-    #                 f"My name is {self.my_name_is}. I am {self.iam}. "
-    #                 f"My capabilities include: {my_capabilities_str}. "
-    #                 f"I am tasked with solving the following task."
-    #             ),
-    #         },
-    #         {"role": "user", "content": f"The task to resolve is: '{task}'"},
-    #     ]
-    #     print('teub3')
-    #     # Utilisation du modèle NLP pour générer la réponse de manière asynchrone
-    #     async for chunk in self.nlp_model.stream_chat_completion(messages):
-    #         yield chunk  # Renvoie chaque morceau de la réponse au fur et à mesure

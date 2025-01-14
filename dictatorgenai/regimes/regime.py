@@ -1,11 +1,15 @@
 import asyncio
+import uuid
 import logging
 import time
 from typing import AsyncGenerator, Dict, List, Callable, Any, Generator
+from dictatorgenai.memories.chat_discussion import ChatDiscussion
+from dictatorgenai.memories.sql_ite_chat_memory import SQLiteChatMemory
 from dictatorgenai.models import BaseModel, Message
 from dictatorgenai.command_chains import CommandChain, DefaultCommandChain
 from dictatorgenai.agents import General, TaskExecutionError
 from dictatorgenai.events import BaseEventManager, EventManager, Event
+from dictatorgenai.utils.task import Task
 from .base_regime import BaseRegime
 
 class RegimeExecutionError(TaskExecutionError):
@@ -28,7 +32,7 @@ class Regime(BaseRegime):
         dictator (General): The general currently leading the task.
         command_chain (CommandChain): The command chain responsible for delegating tasks.
         event_manager (BaseEventManager): Handles event notifications and subscriptions.
-        memory (List[Message]): Memory for storing past messages and events.
+        memory (ChatDiscussion): Memory for storing past messages and events.
     """
 
     def __init__(
@@ -38,6 +42,7 @@ class Regime(BaseRegime):
         generals: List[General],
         command_chain: CommandChain = None,
         event_manager: BaseEventManager = None,
+        memory: ChatDiscussion = None, 
     ):
         """
         Initializes the Regime with the given NLP model, list of generals, and optional command chain
@@ -49,12 +54,14 @@ class Regime(BaseRegime):
             generals (List[General]): A list of generals (agents) under the regime's control.
             command_chain (CommandChain, optional): The command chain used to delegate tasks. Defaults to DefaultCommandChain.
             event_manager (BaseEventManager, optional): The event manager for handling event notifications. Defaults to EventManager.
+            memory (ChatDiscussion, optional): The chat discussion memory backend. Defaults to SQLiteMemory.
         """
         super().__init__(nlp_model, government_prompt, generals, command_chain or DefaultCommandChain(nlp_model, confidence_threshold=0.6), event_manager or EventManager())
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.memory: List[Message] = []
+        memory_id = f"regime_{uuid.uuid4().hex[:8]}"
+        self.memory = memory or ChatDiscussion(memory_id=memory_id, memory=SQLiteChatMemory(db_path="regime_memory.db"))
 
-    async def chat(self, task: str) -> AsyncGenerator[str, None]:
+    async def chat(self, request: str) -> AsyncGenerator[str, None]:
         """
         Orchestrates the execution of the task, handling event notifications and managing
         the generals assigned to complete the task.
@@ -68,29 +75,30 @@ class Regime(BaseRegime):
         Raises:
             RegimeExecutionError: If all generals fail to complete the task.
         """
-        task_id = str(hash(task))  # Generate a unique ID for the task
+       
         start_time = time.time()
-        await self.publish("task_started", task_id, "System", f"Starting task: {task}")
+        task = Task(request=request, context=self.memory.get_messages())
+        await self.publish("task_started", task.task_id, "System", f"Starting task: {task}")
 
-        self.add_to_memory({"role": "user", "content": task})
         
         try:
             # Use 'prepare_task_execution' to get the dictator, assisting generals, and the execution function
             dictator, generals_to_use, execute_task = await self.command_chain.prepare_task_execution(
-                self.generals, task
+                self.generals, 
+                task,
             )
         except TaskExecutionError as e:
             end_time = time.time()
             await self.publish(
                 "task_failed",
-                task_id,
+                task.task_id,
                 "System",
-                f"Task '{task}' failed to start due to: {e}",
+                f"Task '{task}' failed to start due to: {e.clarification_request}",
             )
-            raise RegimeExecutionError(
-                f"All generals are incapable of executing the task: {task}"
-            ) from e
-
+            self.memory.add_message({"role": "user", "content": task.request})
+            self.memory.add_message({"role": "assistant", "content": e.clarification_request})
+            yield e.clarification_request
+            return
         if dictator:
             try:
                 # Perform a coup if necessary
@@ -101,19 +109,19 @@ class Regime(BaseRegime):
                     generals_names = ", ".join([general.my_name_is for general in generals_to_use])
                     await self.publish(
                         "task_update",
-                        task_id,
+                        task.task_id,
                         dictator.my_name_is,
                         f"General {dictator.my_name_is} is attempting to solve the task with the help of: {generals_names}",
-                        details={"task": task, "generals_assisting": generals_names}
+                        details={"task": task.task_id, "generals_assisting": generals_names}
                     )
                 else:
                     # Notify that the dictator is solving the task alone
                     await self.publish(
                         "task_update",
-                        task_id,
+                        task.task_id,
                         dictator.my_name_is,
                         f"General {dictator.my_name_is} is attempting to solve the task alone.",
-                        details={"task": task}
+                        details={"task": task.task_id}
                     )
 
                 # Execute the task and stream results
@@ -124,12 +132,12 @@ class Regime(BaseRegime):
                     result += chunk
                     yield chunk
 
-                print('result') 
-
-                self.add_to_memory({"role": "assistant", "content": result})
+                self.memory.add_message({"role": "user", "content": task.request})
+                self.memory.add_message({"role": "assistant", "content": result})
+                
                 await self.publish(
                     "task_completed",
-                    task_id,
+                    task.task_id,
                     dictator.my_name_is,
                     f"General {dictator.my_name_is} solved the task",
                     details={"result": result}
@@ -139,7 +147,7 @@ class Regime(BaseRegime):
             except TaskExecutionError:
                 await self.publish(
                     "task_failed",
-                    task_id,
+                    task.task_id,
                     dictator.my_name_is,
                     f"General {dictator.my_name_is} failed to complete the task.",
                 )
@@ -147,7 +155,7 @@ class Regime(BaseRegime):
         end_time = time.time()
         await self.publish(
             "task_failed",
-            task_id,
+            task.task_id,
             "System",
             f"Task '{task}' failed to complete in {end_time - start_time:.2f} seconds.",
         )
@@ -173,14 +181,15 @@ class Regime(BaseRegime):
                 self.generals.remove(general)
             self.generals.insert(0, general)  # Dictator is placed at the top
             self.dictator = general
+            general.perform_coup_detat(True)
 
             # Handle assisting generals
             if generals_to_use:
                 for assisting_general in generals_to_use:
+                    assisting_general.perform_coup_detat(False)
                     if assisting_general in self.generals:
                         self.generals.remove(assisting_general)  # Remove from current position
                     self.generals.insert(1, assisting_general)  # Place after the dictator
-
             # Log the coup d'état
             self.logger.debug(f"{general.my_name_is} is performing a coup d'état and becoming the new dictator.")
 

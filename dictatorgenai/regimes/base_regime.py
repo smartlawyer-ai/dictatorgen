@@ -44,7 +44,6 @@ class BaseRegime(ABC):
         self.command_chain = command_chain
         self.event_manager = event_manager
         self.logger = logging.getLogger(self.__class__.__name__)
-        self.memory: List[Message] = []
 
     @abstractmethod
     async def perform_coup(self, general: General):
@@ -97,15 +96,6 @@ class BaseRegime(ABC):
             details=details or {}
         )
         await self.event_manager.publish(event_type, event)
-
-    def add_to_memory(self, message: Message):
-        """
-        Adds a message to the regime's memory.
-
-        Args:
-            message (Message): The message to store in the regime's memory.
-        """
-        self.memory.append(message)
 
     @abstractmethod
     async def chat(self, message: str, discussion_id: str = None) -> Generator[str, None, None]:
