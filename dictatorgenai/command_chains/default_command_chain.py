@@ -101,11 +101,12 @@ class DefaultCommandChain(CommandChain):
 
         # Run evaluations in parallel for all generals
         evaluations = await asyncio.gather(*(evaluate_general(g) for g in generals))
-
+        
         # Process evaluations
         for general, result, confidence, details in evaluations:
             if result == "entirely" or result == "partially":
                 # Collect generals who are partially capable
+                print(general.my_name_is, result, confidence, details, "\n")
                 selected_generals.append(general)
                 general_capabilities.append({
                     "general": general,

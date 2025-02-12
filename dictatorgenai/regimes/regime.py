@@ -77,6 +77,7 @@ class Regime(BaseRegime):
         """
        
         start_time = time.time()
+        print(self.memory.get_messages())
         task = Task(request=request, context=self.memory.get_messages())
         await self.publish("task_started", task.task_id, "System", f"Starting task: {task}")
 

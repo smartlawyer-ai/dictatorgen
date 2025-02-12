@@ -8,21 +8,27 @@ class SQLiteChatMemory:
 
     def __init__(self, db_path: str = "chat_memory.db"):
         """
-        Initialise une connexion SQLite et configure la base de données.
-
+        Initialise la base de données SQLite.
+        
         Args:
             db_path (str): Chemin vers le fichier SQLite (par défaut: "chat_memory.db").
         """
         self.db_path = db_path
-        self.conn = sqlite3.connect(self.db_path)
-        self._create_table()
+        self._create_table()  # Création de la table une seule fois
+
+    def _get_connection(self):
+        """
+        Crée une nouvelle connexion SQLite pour chaque requête.
+        """
+        return sqlite3.connect(self.db_path, check_same_thread=False)
 
     def _create_table(self):
         """
         Crée une table SQLite pour stocker les messages si elle n'existe pas.
         """
-        with self.conn:
-            self.conn.execute(
+        conn = self._get_connection()
+        with conn:
+            conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS messages (
                     memory_id TEXT NOT NULL,
@@ -32,6 +38,7 @@ class SQLiteChatMemory:
                 )
                 """
             )
+        conn.close()
 
     def add_message(self, memory_id: str, message: Dict[str, str]):
         """
@@ -41,11 +48,13 @@ class SQLiteChatMemory:
             memory_id (str): Identifiant de la mémoire.
             message (Dict[str, str]): Dictionnaire contenant le rôle et le contenu du message.
         """
-        with self.conn:
-            self.conn.execute(
+        conn = self._get_connection()
+        with conn:
+            conn.execute(
                 "INSERT INTO messages (memory_id, role, content) VALUES (?, ?, ?)",
                 (memory_id, message["role"], message["content"]),
             )
+        conn.close()
 
     def get_messages(self, memory_id: str) -> List[Dict[str, str]]:
         """
@@ -57,12 +66,14 @@ class SQLiteChatMemory:
         Returns:
             List[Dict[str, str]]: Liste des messages sous forme de dictionnaires.
         """
-        cursor = self.conn.cursor()
+        conn = self._get_connection()
+        cursor = conn.cursor()
         cursor.execute(
             "SELECT role, content, timestamp FROM messages WHERE memory_id = ? ORDER BY timestamp ASC",
             (memory_id,),
         )
         rows = cursor.fetchall()
+        conn.close()
         return [{"role": row[0], "content": row[1], "timestamp": row[2]} for row in rows]
 
     def delete_memory(self, memory_id: str):
@@ -72,11 +83,7 @@ class SQLiteChatMemory:
         Args:
             memory_id (str): Identifiant de la mémoire à supprimer.
         """
-        with self.conn:
-            self.conn.execute("DELETE FROM messages WHERE memory_id = ?", (memory_id,))
-
-    def close(self):
-        """
-        Ferme la connexion SQLite.
-        """
-        self.conn.close()
+        conn = self._get_connection()
+        with conn:
+            conn.execute("DELETE FROM messages WHERE memory_id = ?", (memory_id,))
+        conn.close()

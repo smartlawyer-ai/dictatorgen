@@ -21,7 +21,7 @@ if __name__ == "__main__":
     run_chainlit(__file__)
 
 logging.basicConfig(
-    level=logging.WARNING,
+    level=logging.DEBUG,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 
@@ -36,7 +36,6 @@ client = OpenAI()
 #response = client.chat.completions.create(model= "gpt-4o-mini", messages=conversation)
 # Création du modèle NLP
 nlp_model = OpenaiModel(api_key=api_key)
-
 DictatorSettings.set_language("French")
 DictatorSettings.set_nlp_model(nlp_model)
 
@@ -81,7 +80,6 @@ general1 = General(
     ],
     nlp_model=nlp_model,
 )
-
 
 general2 = General(
     my_name_is="Laborius",

@@ -93,6 +93,9 @@ class General(BaseAgent):
                 "'confidence' is a float between 0 and 1.\n"
                 "If 'result' is 'partially' or 'entirely', provide an array of objects in 'details', "
                 "each with 'capability' and 'explanation'.\n"
+                "Be aware that assistant messages in the discussion history may come from various agents, "
+                "not necessarily from me. When evaluating my capabilities, focus solely on my own skills and expertise, "
+                "disregarding assistant messages that do not originate from me."
                 f"{reply_language}"
             )
         }
@@ -301,9 +304,9 @@ class General(BaseAgent):
         si l'agent est un dictateur, puis diffuse la réponse finale en streaming.
         """
         role_description = (
-            "As the dictator, your role is to lead and coordinate the resolution of this task, leveraging the inputs and support of your generals."
+            "As the dictator, your role is to lead and coordinate the resolution of this task (the last user message), leveraging the inputs and support of your generals provided in assistants messages."
             if self.is_dictator
-            else "As a general, your role is to provide expertise and utilize your capabilities to contribute to the resolution of this task."
+            else "As a general, your role is to provide expertise and utilize your capabilities to contribute to the resolution of this task (the last user message)."
         )
         capabilities_str = "\n".join(
             [f"- {cap['capability']}: {cap.get('description', 'No description provided')}" for cap in self.my_capabilities_are]
@@ -336,9 +339,9 @@ class General(BaseAgent):
                 {"role": "assistant", "content": msg["content"]}
                 for msg in assistant_messages  # Inclure les messages assistants anonymisés
             ],
-            {"role": "user", "content": f"The latest task/request to resolve is: '{task.request}'"},
+            {"role": "user", "content": f"The latest task/request to resolve is: '{task.request}' use the context and assistant messages to resolve it."},
         ]
-
+        #print('messages', messages)
         tools_definitions = self.generate_tool_schemas()
 
         # Étape 1 : Traiter les appels d'outils nécessaires
