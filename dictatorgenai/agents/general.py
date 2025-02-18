@@ -60,80 +60,85 @@ class General(BaseAgent):
         self.failed_attempts = 0
         self.logger = logging.getLogger(self.my_name_is)
 
-    def build_capabilities_prompt(self, task: Task) -> List[Message]:
-        """
-        Construit un prompt pour évaluer si les capacités de l'agent sont suffisantes pour résoudre une tâche donnée
-        avec le contexte associé.
+    # def build_capabilities_prompt(self, task: Task) -> List[Message]:
+    #     """
+    #     Construit un prompt pour évaluer si les capacités de l'agent sont suffisantes pour résoudre une tâche donnée
+    #     avec le contexte associé.
 
-        Args:
-            task (Task): L'objet Task contenant la demande et le contexte de discussion.
+    #     Args:
+    #         task (Task): L'objet Task contenant la demande et le contexte de discussion.
 
-        Returns:
-            List[Message]: Une liste de messages structurés pour l'évaluation des capacités.
-        """
+    #     Returns:
+    #         List[Message]: Une liste de messages structurés pour l'évaluation des capacités.
+    #     """
         
-        # Construire le contexte de la discussion
-        context_messages = [
-            {"role": msg["role"], "content": msg["content"]} for msg in task.context
-        ]
-        reply_language = f"Provide details in {DictatorSettings.get_language()} language."
+    #     # Construire le contexte de la discussion
+    #     context_messages = [
+    #         {"role": msg["role"], "content": msg["content"]} for msg in task.context
+    #     ]
+    #     reply_language = f"Provide details in {DictatorSettings.get_language()} language."
         
-        # Ajouter les informations de base au début du prompt
-        system_message = {
-            "role": "system",
-            "content": (
-                f"My name is {self.my_name_is}. I am {self.iam}. "
-                "I have the following capabilities:\n" +
-                "\n".join([f"- {cap['capability']}: {cap.get('description', 'No description provided')}" 
-                        for cap in self.my_capabilities_are]) +
-                "\n\nBased on the context of the discussion and the user's latest request, "
-                "determine if I can solve the task / user's latest input. Evaluate my capabilities against the latest user input.\n"
-                "Reply in JSON format with 'result', 'confidence', and 'details'.\n"
-                "'result' should be 'entirely', 'partially', or 'no'.\n"
-                "'confidence' is a float between 0 and 1.\n"
-                "If 'result' is 'partially' or 'entirely', provide an array of objects in 'details', "
-                "each with 'capability' and 'explanation'.\n"
-                "Be aware that assistant messages in the discussion history may come from various agents, "
-                "not necessarily from me. When evaluating my capabilities, focus solely on my own skills and expertise, "
-                "disregarding assistant messages that do not originate from me."
-                f"{reply_language}"
-            )
-        }
+    #     # Ajouter les informations de base au début du prompt
+    #     system_message = {
+    #         "role": "system",
+    #         "content": (
+    #             f"My name is {self.my_name_is}. I am {self.iam}. "
+    #             "I have the following capabilities:\n" +
+    #             "\n".join([f"- {cap['capability']}: {cap.get('description', 'No description provided')}" 
+    #                     for cap in self.my_capabilities_are]) +
+    #             "\n\nBased on the context of the discussion and the user's latest request, "
+    #             "determine if I can solve the task / user's latest input. Evaluate my capabilities against the latest user input.\n"
+    #             "Reply in JSON format with 'result', 'confidence', and 'details'.\n"
+    #             "'result' should be 'entirely', 'partially', or 'no'.\n"
+    #             "'confidence' is a float between 0 and 1.\n"
+    #             "If 'result' is 'partially' or 'entirely', provide an array of objects in 'details', "
+    #             "each with 'capability' and 'explanation'.\n"
+    #             "Be aware that assistant messages in the discussion history may come from various agents, "
+    #             "not necessarily from me. When evaluating my capabilities, focus solely on my own skills and expertise, "
+    #             "disregarding assistant messages that do not originate from me."
+    #             f"{reply_language}"
+    #         )
+    #     }
         
-        # Ajouter la tâche spécifique comme dernière demande utilisateur
-        task_message = {
-            "role": "user",
-            "content": f"{task.request}",
-        }
+    #     # Ajouter la tâche spécifique comme dernière demande utilisateur
+    #     task_message = {
+    #         "role": "user",
+    #         "content": f"{task.request}",
+    #     }
         
-        # Combiner les messages dans l'ordre
-        messages = [system_message] + context_messages + [task_message]
+    #     # Combiner les messages dans l'ordre
+    #     messages = [system_message] + context_messages + [task_message]
         
-        return messages
+    #     return messages
 
 
-    async def can_execute_task(self, task: Task) -> Dict:
-        prompt = self.build_capabilities_prompt(task=task)
-        try:
-            response = await self.nlp_model.chat_completion(
-                prompt, tools=[], response_format={"type": "json_object"}
-            )
-            message = response.message
-            evaluation = json.loads(getattr(message, "content", ""))
-            self.logger.debug(
-                f"Evaluating task: {task.request} with prompt: {prompt} - Result: {evaluation}"
-            )
-            return evaluation
-        except json.JSONDecodeError as e:
-            self.logger.error(f"Failed to decode JSON response: {response}")
-            raise TaskExecutionError(
-                f"Failed to decode JSON response: {response}"
-            ) from e
-        except Exception as e:
-            self.logger.error(f"An error occurred while evaluating the task: {str(e)}")
-            raise TaskExecutionError(
-                f"An error occurred while evaluating the task: {str(e)}"
-            ) from e
+    # async def can_execute_task(self, task: Task) -> Dict:
+    #     prompt = self.build_capabilities_prompt(task=task)
+    #     try:
+    #         if self.my_name_is == 'Carrius':
+    #             print('prompt', prompt)
+
+    #         response = await self.nlp_model.chat_completion(
+    #             prompt, tools=[], response_format={"type": "json_object"}
+    #         )
+    #         message = response.message
+    #         if self.my_name_is == 'Carrius':
+    #             print('message', message)
+    #         evaluation = json.loads(getattr(message, "content", ""))
+    #         self.logger.debug(
+    #             f"Evaluating task: {task.request} with prompt: {prompt} - Result: {evaluation}"
+    #         )
+    #         return evaluation
+    #     except json.JSONDecodeError as e:
+    #         self.logger.error(f"Failed to decode JSON response: {response}")
+    #         raise TaskExecutionError(
+    #             f"Failed to decode JSON response: {response}"
+    #         ) from e
+    #     except Exception as e:
+    #         self.logger.error(f"An error occurred while evaluating the task: {str(e)}")
+    #         raise TaskExecutionError(
+    #             f"An error occurred while evaluating the task: {str(e)}"
+    #         ) from e
     
     # Making the agent communicate with others
     async def send_message(self, recipient: 'General', message: str, task: Task) -> str:

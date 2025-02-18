@@ -8,6 +8,7 @@ from dictatorgenai.utils.task import Task
 from .command_chain import CommandChain
 from ..agents.general import General, TaskExecutionError
 from dictatorgenai.conversations import BaseConversation
+from dictatorgenai.config import DictatorSettings
 
 class DefaultCommandChain(CommandChain):
     """
@@ -90,23 +91,99 @@ class DefaultCommandChain(CommandChain):
         general_capabilities = []
         majordomo = Majordomo()
 
-        async def evaluate_general(general: General):
+        def build_capabilities_prompt_for_general(general: General, task: Task) -> List[Message]:
+            """
+            Construit un prompt pour évaluer si les capacités du général sont suffisantes pour résoudre une tâche donnée
+            avec le contexte associé.
+
+            Args:
+                general (General): Le général pour lequel évaluer les capacités.
+                task (Task): L'objet Task contenant la demande et le contexte de discussion.
+
+            Returns:
+                List[Message]: Une liste de messages structurés pour l'évaluation des capacités.
+            """
+            
+            # Construire le contexte de la discussion
+            context_messages = [
+                {"role": msg["role"], "content": msg["content"]} for msg in task.context
+            ]
+            reply_language = f"Provide details in {DictatorSettings.get_language()} language."
+            
+            # Ajouter les informations de base au début du prompt
+            system_message = {
+                "role": "system",
+                "content": (
+                    f"My name is {general.my_name_is}. I am {general.iam}. "
+                    "I have the following capabilities:\n" +
+                    "\n".join([f"- {cap['capability']}: {cap.get('description', 'No description provided')}" 
+                            for cap in general.my_capabilities_are]) +
+                    "\n\nBased on the context of the discussion and the user's latest request, "
+                    "determine if I can solve the task / user's latest input. Evaluate my capabilities against the latest user input.\n"
+                    "Reply in JSON format with 'result', 'confidence', and 'details'.\n"
+                    "'result' should be 'entirely', 'partially', or 'no'.\n"
+                    "'confidence' is a float between 0 and 1.\n"
+                    "If 'result' is 'partially' or 'entirely', provide an array of objects in 'details', "
+                    "each with 'capability' and 'explanation'.\n"
+                    "Be aware that assistant messages in the discussion history may come from various agents, "
+                    "not necessarily from me. When evaluating my capabilities, focus solely on my own skills and expertise, "
+                    "disregarding assistant messages that do not originate from me."
+                    f"{reply_language}"
+                )
+            }
+            
+            # Ajouter la tâche spécifique comme dernière demande utilisateur
+            task_message = {
+                "role": "user",
+                "content": f"{task.request}",
+            }
+            
+            # Combiner les messages dans l'ordre
+            messages = [system_message] + context_messages + [task_message]
+        
+            return messages
+
+        async def evaluate_general(general: General, task: Task):
             """Helper function to evaluate a general asynchronously."""
             print('evaluate', general.my_name_is)
-            capability_level = await general.can_execute_task(task)
-            result = capability_level.get("result")
-            confidence = capability_level.get("confidence", 0)
-            details = capability_level.get("details", [])
-            return general, result, confidence, details
+
+            # Construire le prompt à l'aide de la méthode de la CommandChain
+            prompt = build_capabilities_prompt_for_general(general, task)
+            
+            try:
+                # Obtenir la réponse du modèle
+                response = await self.nlp_model.chat_completion(
+                    prompt, tools=[], response_format={"type": "json_object"}
+                )
+                message = response.message
+                
+                # Analyser la réponse du modèle
+                evaluation = json.loads(getattr(message, "content", "{}"))
+                
+                # Extraire les détails de l'évaluation
+                result = evaluation.get("result")
+                confidence = evaluation.get("confidence", 0)
+                details = evaluation.get("details", [])
+                
+                # Retourner le résultat de l'évaluation
+                return general, result, confidence, details
+                
+            except json.JSONDecodeError as e:
+                self.logger.error(f"Failed to decode JSON response: {response}")
+                raise TaskExecutionError(f"Failed to decode JSON response: {response}") from e
+            except Exception as e:
+                self.logger.error(f"An error occurred while evaluating the task: {str(e)}")
+                raise TaskExecutionError(f"An error occurred while evaluating the task: {str(e)}") from e
+
 
         # Run evaluations in parallel for all generals
-        evaluations = await asyncio.gather(*(evaluate_general(g) for g in generals))
+        evaluations = await asyncio.gather(*(evaluate_general(g, task=task) for g in generals))
         
         # Process evaluations
         for general, result, confidence, details in evaluations:
             if result == "entirely" or result == "partially":
                 # Collect generals who are partially capable
-                print(general.my_name_is, result, confidence, details, "\n")
+                #print(general.my_name_is, result, confidence, details, "\n")
                 selected_generals.append(general)
                 general_capabilities.append({
                     "general": general,

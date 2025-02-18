@@ -102,19 +102,6 @@ class BaseAgent(ABC):
             return tool(*args, **kwargs)
 
     @abstractmethod
-    async def can_execute_task(self, task: Task) -> Dict:
-        """
-        Abstract method to evaluate if the agent has the capabilities to execute a task.
-
-        Args:
-            task (str): The task to be evaluated.
-
-        Returns:
-            Dict: A dictionary indicating the agent's capability to perform the task.
-        """
-        pass
-
-    @abstractmethod
     async def solve_task(self, task: Task) -> str:
         """
         Abstract method to solve a given task.

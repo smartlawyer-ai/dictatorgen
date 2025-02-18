@@ -21,23 +21,23 @@ class Majordomo(BaseAgent):
         super().__init__(my_name_is, my_capabilities_are, tools)
         self.logger = logging.getLogger(self.__class__.__name__)
 
-    async def can_execute_task(self, task: Task) -> Dict:
-        """
-        Determines if the Majordomo can execute the task.
+    # async def can_execute_task(self, task: Task) -> Dict:
+    #     """
+    #     Determines if the Majordomo can execute the task.
 
-        The Majordomo is always capable of managing tasks that involve user interaction.
+    #     The Majordomo is always capable of managing tasks that involve user interaction.
 
-        Args:
-            task (Task): The task to evaluate.
+    #     Args:
+    #         task (Task): The task to evaluate.
 
-        Returns:
-            Dict: Result indicating the Majordomo can assist.
-        """
-        return {
-            "result": "entirely",
-            "confidence": 1.0,
-            "details": [{"capability": "clarify_request", "explanation": "Capable of requesting user input"}]
-        }
+    #     Returns:
+    #         Dict: Result indicating the Majordomo can assist.
+    #     """
+    #     return {
+    #         "result": "entirely",
+    #         "confidence": 1.0,
+    #         "details": [{"capability": "clarify_request", "explanation": "Capable of requesting user input"}]
+    #     }
 
     async def solve_task(self, task: Task) -> AsyncGenerator[str, None]:
         """

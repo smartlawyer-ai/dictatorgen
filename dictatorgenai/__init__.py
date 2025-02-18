@@ -19,7 +19,7 @@ from .events import BaseEventManager, EventManager, Event
 from .models.base_model import BaseModel, Message
 from .models.openai_model import OpenaiModel
 from .config.settings import DictatorSettings
-from .memories import SQLiteChatMemory, BaseChatMemory, ChatDiscussion
+from .memories import SQLiteChatMemory, BaseChatMemory, ChatDiscussion, RedisChatMemory
 from .utils.task import Task, TaskStatus
 
 
@@ -52,4 +52,5 @@ __all__ = [
     "SQLiteChatMemory",
     "BaseChatMemory",
     "ChatDiscussion",
+    "RedisChatMemory",
 ]

@@ -100,23 +100,23 @@ class InformationOfficer(BaseAgent):
         
         return response
 
-    async def can_execute_task(self, task: str, context: List[Dict[str, str]]) -> Dict:
-        """
-        Determines if the Information Officer can process the context and extract relevant information
-        for the given task.
+    # async def can_execute_task(self, task: str, context: List[Dict[str, str]]) -> Dict:
+    #     """
+    #     Determines if the Information Officer can process the context and extract relevant information
+    #     for the given task.
 
-        Args:
-            task (str): The task to evaluate.
-            context (List[Dict[str, str]]): The discussion context to analyze.
+    #     Args:
+    #         task (str): The task to evaluate.
+    #         context (List[Dict[str, str]]): The discussion context to analyze.
 
-        Returns:
-            Dict: An evaluation indicating capability to process the task.
-        """
-        return {
-            "result": "entirely",
-            "confidence": 1.0,
-            "details": [{"capability": "context_filtering", "description": "Can analyze and extract task-relevant context"}],
-        }
+    #     Returns:
+    #         Dict: An evaluation indicating capability to process the task.
+    #     """
+    #     return {
+    #         "result": "entirely",
+    #         "confidence": 1.0,
+    #         "details": [{"capability": "context_filtering", "description": "Can analyze and extract task-relevant context"}],
+    #     }
 
     async def can_perform_coup(self) -> bool:
         """
