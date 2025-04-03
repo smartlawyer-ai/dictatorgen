@@ -39,7 +39,7 @@ class Majordomo(BaseAgent):
     #         "details": [{"capability": "clarify_request", "explanation": "Capable of requesting user input"}]
     #     }
 
-    async def solve_task(self, task: Task) -> AsyncGenerator[str, None]:
+    async def solve_task(self, task: Task, **kwargs: Any) -> AsyncGenerator[str, None]:
         """
         Handles solving a task by generating a clarification request message for the user
         and sending it as an assistant's input.
@@ -55,7 +55,9 @@ class Majordomo(BaseAgent):
 
         # Construire le contexte à partir de la discussion
         context_messages = [
-            {"role": msg["role"], "content": msg["content"]} for msg in task.context
+            {"role": step.role, "content": step.content} 
+            for step in task.steps
+            if step.step_type in ("user_message", "assistant_message")
         ]
 
         # Ajouter le message reçu et les informations de base

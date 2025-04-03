@@ -2,37 +2,29 @@ import asyncio
 import uuid
 import logging
 import time
-from typing import AsyncGenerator, Dict, List, Callable, Any, Generator
-from dictatorgenai.memories.chat_discussion import ChatDiscussion
-from dictatorgenai.memories.sql_ite_chat_memory import SQLiteChatMemory
+import json
+from typing import AsyncGenerator, Dict, List, Optional
+
 from dictatorgenai.models import BaseModel, Message
 from dictatorgenai.command_chains import CommandChain, DefaultCommandChain
 from dictatorgenai.agents import General, TaskExecutionError
-from dictatorgenai.events import BaseEventManager, EventManager, Event
+from dictatorgenai.events import BaseEventManager, EventManager, EventType, Event
 from dictatorgenai.utils.task import Task
 from .base_regime import BaseRegime
+from dictatorgenai.memories.regime_memory import RegimeMemory
+from dictatorgenai.memories.stores.sqlite_store import SQLiteStore
+from dictatorgenai.steps.message_steps import UserMessageStep
+from dictatorgenai.steps.action_steps import GeneralSelectionStep, CoupDEtatStep, ActionStep
+
 
 class RegimeExecutionError(TaskExecutionError):
-    """
-    Raised when the entire regime fails to perform the task.
-    """
+    """Raised when the entire regime fails to perform the task."""
     pass
 
 
 class Regime(BaseRegime):
     """
-    A concrete implementation of the BaseRegime class. It handles the execution of tasks
-    by delegating them to generals (agents), managing event notifications, and handling
-    the transition of power (coup d'état) if necessary.
-
-    Attributes:
-        nlp_model (BaseModel): The NLP model used for processing tasks.
-        government_prompt (str): The regime's central objective or task.
-        generals (List[General]): A list of generals (agents) available to the regime.
-        dictator (General): The general currently leading the task.
-        command_chain (CommandChain): The command chain responsible for delegating tasks.
-        event_manager (BaseEventManager): Handles event notifications and subscriptions.
-        memory (ChatDiscussion): Memory for storing past messages and events.
+    Gère l'exécution des tâches en délégant aux généraux, en traquant les décisions et les résultats dans `RegimeMemory`.
     """
 
     def __init__(
@@ -40,92 +32,93 @@ class Regime(BaseRegime):
         nlp_model: BaseModel,
         government_prompt: str,
         generals: List[General],
+        memory_id: Optional[str] = None,  # ✅ Ajout d'un paramètre memory_id
         command_chain: CommandChain = None,
         event_manager: BaseEventManager = None,
-        memory: ChatDiscussion = None, 
+        memory_store: Optional[SQLiteStore] = None,
     ):
         """
-        Initializes the Regime with the given NLP model, list of generals, and optional command chain
-        and event manager.
+        Initialise un régime avec un modèle NLP, des généraux et une mémoire persistante.
 
         Args:
-            nlp_model (BaseModel): The NLP model used for task execution and communication.
-            government_prompt (str): The central prompt or objective for the regime.
-            generals (List[General]): A list of generals (agents) under the regime's control.
-            command_chain (CommandChain, optional): The command chain used to delegate tasks. Defaults to DefaultCommandChain.
-            event_manager (BaseEventManager, optional): The event manager for handling event notifications. Defaults to EventManager.
-            memory (ChatDiscussion, optional): The chat discussion memory backend. Defaults to SQLiteMemory.
+            nlp_model (BaseModel): Modèle NLP utilisé pour le traitement des tâches.
+            government_prompt (str): Objectif principal du régime.
+            generals (List[General]): Liste des généraux disponibles.
+            memory_id (Optional[str]): Identifiant mémoire pour récupérer une discussion existante.
+            command_chain (CommandChain, optional): Chaine de commande pour la gestion des tâches.
+            event_manager (BaseEventManager, optional): Gestionnaire d'événements.
+            memory_store (Optional[SQLiteStore], optional): Store de mémoire pour la persistance.
         """
-        super().__init__(nlp_model, government_prompt, generals, command_chain or DefaultCommandChain(nlp_model, confidence_threshold=0.6), event_manager or EventManager())
+        event_manager = event_manager or EventManager()
+
+        super().__init__(
+            nlp_model,
+            government_prompt,
+            generals,
+            command_chain or DefaultCommandChain(nlp_model, confidence_threshold=0.6, event_manager=event_manager),
+            event_manager
+        )
+
         self.logger = logging.getLogger(self.__class__.__name__)
-        memory_id = f"regime_{uuid.uuid4().hex[:8]}"
-        self.memory = memory or ChatDiscussion(memory_id=memory_id, memory=SQLiteChatMemory(db_path="regime_memory.db"))
+
+        # ✅ Si un memory_id est fourni, on le réutilise, sinon on en génère un nouveau
+        self.memory_id = memory_id or f"regime_{uuid.uuid4().hex[:8]}"
+
+        # ✅ Initialisation de la mémoire du régime
+        self.memory = RegimeMemory(
+            memory_id=self.memory_id,
+            task=Task(request=government_prompt),
+            store=memory_store or SQLiteStore(db_path="regime_store.db")
+        )
 
     async def chat(self, request: str) -> AsyncGenerator[str, None]:
         """
-        Orchestrates the execution of the task, handling event notifications and managing
-        the generals assigned to complete the task.
+        Gère une discussion utilisateur en traquant chaque étape de raisonnement.
 
         Args:
-            task (str): The task to execute.
+            request (str): Requête utilisateur.
 
         Yields:
-            str: Chunks of the task solution as the generals work to resolve it.
+            str: Résolution progressive de la tâche.
 
         Raises:
-            RegimeExecutionError: If all generals fail to complete the task.
+            RegimeExecutionError: Si tous les généraux échouent.
         """
-       
         start_time = time.time()
-        print(self.memory.get_messages())
-        task = Task(request=request, context=self.memory.get_messages())
-        await self.publish("task_started", task.task_id, "System", f"Starting task: {task}")
-
         
+        task = Task(request=request, steps=self.memory.steps)
+        user_step = self.memory.add_user_message(request)
+        task.add_step(user_step)
+        await self.publish(Event(EventType.TASK_STARTED, f"Starting task", task.task_id, details=task.to_dict()))
+
         try:
-            # Use 'prepare_task_execution' to get the dictator, assisting generals, and the execution function
-            dictator, generals_to_use, execute_task = await self.command_chain.prepare_task_execution(
-                self.generals, 
-                task,
-            )
+            dictator, generals_to_use, execute_task = await self.command_chain.prepare_task_execution(self.generals, task)
+            generals_names = ", ".join([general.my_name_is for general in generals_to_use])
+            generals_selection_step = self.memory.select_generals([dictator.my_name_is] + [general.my_name_is for general in generals_to_use])
+            task.add_step(GeneralSelectionStep(request_id=len(task.steps) + 1, selected_generals=[dictator.my_name_is] + [general.my_name_is for general in generals_to_use], metadata={"dictator": dictator.my_name_is, "generals": generals_names}))
+            await self.publish(Event(EventType.GENERALS_SELECTED, f"Selected generals: {generals_names}", task.task_id, details=task.to_dict()))
+            
         except TaskExecutionError as e:
-            end_time = time.time()
-            await self.publish(
-                "task_failed",
-                task.task_id,
-                "System",
-                f"Task '{task}' failed to start due to: {e.clarification_request}",
-            )
-            self.memory.add_message({"role": "user", "content": task.request})
-            self.memory.add_message({"role": "assistant", "content": e.clarification_request})
+            await self._handle_task_failure(task, e)
             yield e.clarification_request
             return
+
         if dictator:
             try:
-                # Perform a coup if necessary
-                await self.perform_coup(general=dictator, generals_to_use=generals_to_use)
-
+                
                 if len(generals_to_use) > 0:
+                    self.memory.select_generals([general.my_name_is for general in generals_to_use])
+                    await self.perform_coup(dictator, generals_to_use, task=task)
                     # Notify that the dictator is solving the task with help
                     generals_names = ", ".join([general.my_name_is for general in generals_to_use])
-                    await self.publish(
-                        "task_update",
-                        task.task_id,
-                        dictator.my_name_is,
-                        f"General {dictator.my_name_is} is attempting to solve the task with the help of: {generals_names}",
-                        details={"task": task.task_id, "generals_assisting": generals_names}
-                    )
+                    await self.publish(Event(EventType.TASK_UPDATED, f"General {dictator.my_name_is} is solving the task with help of {generals_names}", task.task_id, details=task.to_dict()))
+                    
                 else:
                     # Notify that the dictator is solving the task alone
-                    await self.publish(
-                        "task_update",
-                        task.task_id,
-                        dictator.my_name_is,
-                        f"General {dictator.my_name_is} is attempting to solve the task alone.",
-                        details={"task": task.task_id}
-                    )
+                    self.memory.select_generals([dictator.my_name_is])
+                    await self.perform_coup(dictator, task=task)
+                    await self.publish(Event(EventType.TASK_UPDATED, f"General {dictator.my_name_is} is solving the task alone", task.task_id, details=task.to_dict()))
 
-                # Execute the task and stream results
                 result_generator = execute_task()  # Pas besoin d'attendre ici
                 result = ""
                 
@@ -133,73 +126,58 @@ class Regime(BaseRegime):
                     result += chunk
                     yield chunk
 
-                self.memory.add_message({"role": "user", "content": task.request})
-                self.memory.add_message({"role": "assistant", "content": result})
-                
-                await self.publish(
-                    "task_completed",
-                    task.task_id,
-                    dictator.my_name_is,
-                    f"General {dictator.my_name_is} solved the task",
-                    details={"result": result}
-                )
-                end_time = time.time()
+                step = self.memory.add_assistant_message(result)
+                task.add_step(step)
+
+                await self.publish(Event(EventType.TASK_COMPLETED, f"Task completed by {dictator.my_name_is}", task.task_id, details=task.to_dict()))
                 return
+            
             except TaskExecutionError:
-                await self.publish(
-                    "task_failed",
-                    task.task_id,
-                    dictator.my_name_is,
-                    f"General {dictator.my_name_is} failed to complete the task.",
-                )
+                await self.publish(Event(EventType.TASK_FAILED, f"Task failed", task.task_id, details=task.to_dict()))
 
-        end_time = time.time()
-        await self.publish(
-            "task_failed",
-            task.task_id,
-            "System",
-            f"Task '{task}' failed to complete in {end_time - start_time:.2f} seconds.",
-        )
+        await self.publish(Event(EventType.TASK_FAILED, f"Task '{task}' failed in {time.time() - start_time:.2f} seconds.", task.task_id, details=task.to_dict()))
+        raise RegimeExecutionError(f"All capable generals failed to execute the task: {task}")
 
-        raise RegimeExecutionError(
-            f"All capable generals failed to execute the task: {task}"
-        )
 
-    async def perform_coup(self, general: General, generals_to_use: List[General] = None):
+    async def perform_coup(self, general: General, generals_to_use: List[General] = None, task: Optional[Task] = None):
         """
-        Handles the power transition (coup d'état) when a general takes over as dictator.
-        Also rearranges the list of generals, placing the dictator and assisting generals at the top.
+        Gère la transition de pouvoir lorsqu'un général devient dictateur.
 
         Args:
-            general (General): The general executing the coup.
-            generals_to_use (List[General], optional): List of generals assisting the dictator.
+            general (General): Général prenant le pouvoir.
+            generals_to_use (List[General], optional): Généraux assistant.
         """
         if general != self.dictator:
-            previous_dictator = self.dictator  # Save the previous dictator for event details
-
-            # Remove the general and place them at the top of the generals list
+            previous_dictator = self.dictator
             if general in self.generals:
                 self.generals.remove(general)
-            self.generals.insert(0, general)  # Dictator is placed at the top
+            self.generals.insert(0, general)
             self.dictator = general
             general.perform_coup_detat(True)
 
-            # Handle assisting generals
+            # Ajout des généraux assistants
             if generals_to_use:
                 for assisting_general in generals_to_use:
                     assisting_general.perform_coup_detat(False)
                     if assisting_general in self.generals:
-                        self.generals.remove(assisting_general)  # Remove from current position
-                    self.generals.insert(1, assisting_general)  # Place after the dictator
-            # Log the coup d'état
-            self.logger.debug(f"{general.my_name_is} is performing a coup d'état and becoming the new dictator.")
+                        self.generals.remove(assisting_general)
+                    self.generals.insert(1, assisting_general)
 
-            # Publish a 'coup_d_etat' event
-            await self.publish(
-                event_type="coup_d_etat",
-                task_id="system",  # Use 'system' because it's not part of an active task
-                agent=general.my_name_is,  # Name of the general performing the coup
-                message=f"{general.my_name_is} has performed a coup d'état and is now the dictator.",
-                details={"previous_dictator": previous_dictator.my_name_is if previous_dictator else "None",
-                         "assisting_generals": [gen.my_name_is for gen in generals_to_use] if generals_to_use else []}
-            )
+            self.logger.debug(f"{general.my_name_is} performed a coup d'état and became the new dictator.")
+            await self.publish(Event(EventType.COUP_D_ETAT, f"{general.my_name_is} performed a coup d'état.", task.task_id, details=task.to_dict() if task else None))
+            self.memory.coup_detat(new_dictator=general.my_name_is, previous_dictator=previous_dictator.my_name_is if previous_dictator else None)
+
+
+    async def _handle_task_failure(self, task: Task, error: TaskExecutionError):
+        """
+        Gère l'échec d'une tâche et enregistre l'erreur en mémoire.
+
+        Args:
+            task (Task): Tâche échouée.
+            error (TaskExecutionError): Erreur rencontrée.
+        """
+        await self.publish(Event(EventType.TASK_FAILED, f"Task '{task}' failed: {error.clarification_request}", task.task_id, details=task.to_dict()))
+        self.memory.add_action_step("System", "Failure handling", error.clarification_request)
+
+    
+

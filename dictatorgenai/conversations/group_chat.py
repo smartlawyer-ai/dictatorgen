@@ -3,35 +3,31 @@ import logging
 import asyncio
 from dictatorgenai.agents.general import General
 from dictatorgenai.utils.task import Task
+from dictatorgenai.steps.message_steps import AssistantMessageStep
+from dictatorgenai.agents.assigned_general import AssignedGeneral
 from .base_conversation import BaseConversation
+
 # Configuration du logger
 logger = logging.getLogger(__name__)
 
 class GroupChat(BaseConversation):
 
     async def start_conversation(
-        self, dictator: General, generals: List[General], task: Task
+        self, dictator: AssignedGeneral, generals: List[AssignedGeneral], task: Task
     ) -> AsyncGenerator[str, None]:
         """
         The dictator sends an imperative message to all the generals asynchronously,
         gathers their responses in parallel, and then uses the input to resolve the task.
         """
         try:
-            async def send_command_to_general(general: General):
+            async def send_command_to_general(general: AssignedGeneral):
                 """Envoie une commande à un général et récupère sa réponse."""
                 try:
-                    # Obtenir les capacités pertinentes du général pour la tâche
-                    general_relevant_capabilities = self.get_general_relevant_capabilities(general, task)
-
-                    # Vérifier si le général n'a aucune capacité pertinente pour la tâche
-                    if not general_relevant_capabilities:
-                        logger.debug(f"General {general.my_name_is} has no relevant capabilities for this task.")
-                        return None  # Retourne None pour les généraux non pertinents
 
                     # Générer une liste de capacités sous forme de texte
                     selected_capabilities = [
-                        f"{cap['capability']} (Explanation: {cap['explanation']} Confidence: {cap['confidence']})"
-                        for cap in general_relevant_capabilities
+                        f"{cap['capability']} (Explanation: {cap['explanation']}, Legal queries: {cap['legal_queries']}, Confidence: {general.confidence}) subtasks: {cap['subtasks']}"
+                        for cap in general.capabilities_used
                     ]
                     selected_capabilities_str = "\n- ".join(selected_capabilities)
                     print(selected_capabilities_str, "\n")
@@ -39,24 +35,33 @@ class GroupChat(BaseConversation):
                     imperative_message = (
                         f"I am {dictator.my_name_is}, and I have selected you, {general.my_name_is}, "
                         f"to assist with the task: '{task.request}'.\n"
-                        f"You have been chosen based on the following capabilities:\n"
+                        f"You have been chosen based on the following capabilities, and associate subtasks to solve :\n"
                         f"- {selected_capabilities_str}.\n\n"
-                        f"Focus strictly on these capabilities and their details, and provide your input accordingly. "
+                        f""
+                        f"\n\n"
+                        f"Focus strictly on these capabilities and their details, and provide your input accordingly to solve the subtasks. "
                         f"Ignore any aspect of the task that falls outside your expertise."
+
+                        f"You are allowed and encouraged to use your legal tools to search for supporting legal texts, "
+                        f"articles, jurisprudence or doctrine that could strengthen your answer.\n"
+                        f"For this, rely on the `legal_queries` provided with each capability. "
+                        f"Use them as search inputs for your legal research tools to retrieve the most relevant legal context.\n\n"
+                        
+                        f"Be concise, precise, and legally grounded in your response."
                     )
 
                     logger.debug(f"Sending command to General {general.my_name_is}...\n")
 
                     # Envoyer le message au général (appel asynchrone)
                     response_content = await dictator.send_message(general, imperative_message, task=task)
-                    print(f"General {general.my_name_is}'s response: {response_content}\n")
+                    #print(f"General {general.my_name_is}'s response: {response_content}\n")
                     logger.debug(f"General {general.my_name_is}'s response: {response_content}\n")
 
                     # Retourner la réponse sous forme d'objet
                     return {
                         "general": general.my_name_is,
                         "content": response_content,
-                        "capabilities_used": general_relevant_capabilities
+                        "capabilities_used": general.capabilities_used
                     }
 
                 except Exception as e:
@@ -76,16 +81,19 @@ class GroupChat(BaseConversation):
             # ✅ Filtrer les réponses valides (exclure `None` pour les généraux non pertinents)
             responses = [resp for resp in responses if resp is not None]
 
-            # ✅ Ajouter les réponses dans le contexte de la tâche
+
+
             for response in responses:
-                task.context.append({
-                    "role": "assistant",
-                    "content": response["content"],
-                    "metadata": {
+                assistant_step = AssistantMessageStep(
+                    request_id=task.task_id,
+                    content=response["content"],
+                    metadata={
                         "general": response["general"],
                         "capabilities_used": response["capabilities_used"]
                     }
-                })
+                )
+                task.steps.append(assistant_step)
+
 
             # ✅ Le dictateur utilise maintenant les réponses pour finaliser la tâche
             logger.debug(f"Dictator {dictator.my_name_is} is now resolving the task based on the responses...\n")

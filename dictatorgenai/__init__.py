@@ -6,6 +6,8 @@ from .agents.tool import tool
 from .agents.dictator import Dictator
 from .agents.general import General, TaskExecutionError
 from .agents.majordomo import Majordomo
+from .agents.colonel_fragmenter import ColonelFragmenter
+from .agents.legion_commander import LegionCommander
 from .agents.information_officer import InformationOfficer
 from .regimes.regime import Regime, RegimeExecutionError
 from .command_chains.command_chain import CommandChain
@@ -29,6 +31,8 @@ __all__ = [
     "Dictator",
     "General",
     "Majordomo",
+    "ColonelFragmenter",
+    "LegionCommander",
     "InformationOfficer",
     "TaskExecutionError",
     "Regime",

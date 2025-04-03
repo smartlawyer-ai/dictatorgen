@@ -5,6 +5,7 @@ from dictatorgenai.agents.base_agent import TaskExecutionError
 from dictatorgenai.conversations import BaseConversation, GroupChat
 from dictatorgenai.utils.task import Task
 from dictatorgenai.agents.general import General
+from dictatorgenai.agents.assigned_general import AssignedGeneral
 
 class CommandChain(ABC):
     """
@@ -63,7 +64,7 @@ class CommandChain(ABC):
         self, 
         generals: List[General], 
         task: Task,
-    ) -> Tuple[General, List[General], Task]:
+    ) -> Tuple[AssignedGeneral, List[AssignedGeneral], Task]:
         """
         Logic for selecting the dictator and generals.
         Returns a tuple containing the dictator, the list of generals to be used, 
@@ -82,8 +83,8 @@ class CommandChain(ABC):
     @abstractmethod
     async def solve_task(
         self, 
-        dictator: General, 
-        generals: List[General], 
+        dictator: AssignedGeneral, 
+        generals: List[AssignedGeneral], 
         task: Task,
     ) -> AsyncGenerator[str, None]:
         """

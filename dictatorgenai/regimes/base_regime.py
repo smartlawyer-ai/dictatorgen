@@ -77,25 +77,15 @@ class BaseRegime(ABC):
     async def wait_for_event(self, event_type: str):
         await self.event_manager.wait_for_event(event_type)
 
-    async def publish(self, event_type: str, task_id: str, agent: str, message: str, details: Dict = None):
+    async def publish(self, event: Event):
         """
         Publishes a structured event using the Event class.
 
         Args:
-            event_type (str): The type of event (e.g., 'task_started').
-            task_id (str): The unique identifier of the task.
-            agent (str): The name of the agent (general) associated with the event.
-            message (str): A descriptive message related to the event.
-            details (Dict, optional): Additional details for the event (default is None).
+            event (Event): The event to be published.
         """
-        event = Event(
-            event_type=event_type,
-            task_id=task_id,
-            agent=agent,
-            message=message,
-            details=details or {}
-        )
-        await self.event_manager.publish(event_type, event)
+        await self.event_manager.publish(event)  # Passer directement l'événement
+
 
     @abstractmethod
     async def chat(self, message: str, discussion_id: str = None) -> Generator[str, None, None]:

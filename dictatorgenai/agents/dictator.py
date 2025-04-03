@@ -1,4 +1,5 @@
 from .general import General
+from typing import Any
 
 
 class Dictator:
@@ -60,7 +61,7 @@ class Dictator:
     #     """
     #     return self.general.can_execute_task(task)
 
-    def solve_task(self, task):
+    def solve_task(self, task, **kwargs: Any):
         """
         Solves the given task using the Dictator's General.
 

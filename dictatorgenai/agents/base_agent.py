@@ -102,7 +102,7 @@ class BaseAgent(ABC):
             return tool(*args, **kwargs)
 
     @abstractmethod
-    async def solve_task(self, task: Task) -> str:
+    async def solve_task(self, task: Task, **kwargs: Any) -> str:
         """
         Abstract method to solve a given task.
 
