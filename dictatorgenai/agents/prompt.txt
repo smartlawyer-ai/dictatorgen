@@ -1,0 +1,62 @@
+# Contexte
+Voici les sous-tâches qui doivent être résolues : 
+{
+  "main_legal_issue": "Clarification des implications pénales possibles dans le cadre d'une procédure de divorce.",
+  "subtasks": [
+    {
+      "id": 1,
+      "description": "Analyser si des comportements pénalement répréhensibles lors de la procédure de divorce peuvent influencer celle-ci, notamment en matière de violence domestique ou d'adultère.",
+      "required_expert": "Avocat spécialisé en droit pénal et en droit de la famille",
+      "applicable_law": "Code pénal et Code civil"
+    },
+    {
+      "id": 2,
+      "description": "Examiner les conséquences d'une condamnation pénale d'un époux sur la procédure de divorce, notamment en ce qui concerne la garde des enfants et la répartition des biens.",
+      "required_expert": "Avocat spécialisé en droit de la famille",
+      "applicable_law": "Code civil"
+    }
+  ]
+}
+
+# Objectif
+Évaluez si chaque général dans la liste suivante peut résoudre ces sous-tâches en fonction de ses compétences et connaissances.  
+Les généraux sont les suivants :
+My name is Baudelinius. I am an expert in Assistant juridique spécialisé en droit civil, droit de la famille et droit de la procédure civile, 
+            dédié à l'accompagnement des avocats dans la gestion des relations juridiques interpersonnelles, 
+            le traitement des dossiers familiaux et la conduite des procédures civiles. Je mobilise mon expertise en droit des obligations, 
+            en responsabilité civile, en gestion des successions et en droits réels pour assister les avocats dans la rédaction d'actes, 
+            la constitution de dossiers de plaidoirie et la sécurisation des contentieux civils. 
+            Ma maîtrise des règles du Code de l'action sociale et de la famille me permet de soutenir les avocats dans les dossiers relatifs à la protection de l'enfance, 
+            à l'adoption et à l'obtention des aides sociales. 
+            J'accompagne également les avocats dans l'application des règles du Code de procédure civile, notamment pour la gestion des litiges, 
+            la mise en œuvre des voies d'exécution, la saisine des juridictions et l'exécution des mesures conservatoires..
+My name is Laborius. I am an expert in Assistant juridique spécialisé en droit du travail et en droit de la sécurité sociale, au service des avocats dans la gestion des relations de travail, la conformité sociale et la résolution des litiges sociaux. J'interviens sur la rédaction et l'analyse des contrats de travail, le suivi des procédures disciplinaires, la gestion des licenciements et la mise en place des mesures de santé et de sécurité au travail. Mon expertise inclut l'application des conventions collectives sectorielles, l'accompagnement dans la négociation collective et le traitement des contentieux prud'homaux. Je soutiens les avocats dans l'exécution des décisions de justice civile, la gestion des voies de recours et l'application des mesures conservatoires conformément aux exigences du Code de procédure civile..
+My name is Carrius. I am an expert in Assistant juridique spécialisé en droit pénal, droit de la presse et sécurité intérieure, dédié à l'accompagnement des avocats dans la défense des droits des personnes physiques et morales impliquées dans des affaires pénales, des enquêtes criminelles et des contentieux en matière de presse et de télécommunications. J'assiste les avocats dans l'analyse des dossiers pénaux, la préparation des plaidoiries, la gestion des affaires de délinquance juvénile et la protection des communications électroniques. Mon expertise couvre l'appui aux avocats dans le suivi des enquêtes, l'exécution des décisions de justice et la maîtrise des aspects de procédure pénale et de sécurité intérieure..
+My name is Fiscus. I am an expert in Assistant juridique spécialisé en droit financier, droit fiscal et droit pénal des affaires, dédié à l'accompagnement des avocats dans la gestion des affaires de conformité financière, de fiscalité et de lutte contre la corruption. J'assiste les avocats dans l'analyse des dossiers financiers complexes, la préparation des contentieux fiscaux, la détection des pratiques de blanchiment de capitaux et la mise en conformité des entreprises avec les réglementations anticorruption. Mon expertise couvre l'application des obligations de contrôle interne, la protection des lanceurs d'alerte et la gestion des déclarations d'intérêts des responsables publics. J'interviens également dans le cadre des infractions économiques et financières, telles que l'abus de biens sociaux, la fraude fiscale et le blanchiment d'argent, afin de renforcer la stratégie de défense des avocats..
+My name is Mercatorius. I am an expert in Assistant juridique spécialisé en droit commercial, droit des sociétés, droit de la consommation et droit des assurances, dédié à l'accompagnement des avocats dans la gestion des dossiers de droit des affaires et des litiges commerciaux. J'assiste les avocats dans la rédaction des actes de commerce, la constitution et la dissolution des sociétés, la gestion des contrats commerciaux et la défense des entreprises en cas de litige. Mon expertise couvre l'accompagnement des avocats dans les fusions-acquisitions, la protection des consommateurs, la gestion des recours des assurés et le suivi des procédures collectives. J'interviens également sur la mise en conformité des entreprises avec les normes de gouvernance, la protection des droits des actionnaires et la sécurisation des opérations de vente commerciale..
+My name is Cesedus. I am an expert in Assistant juridique spécialisé en droit administratif, public, constitutionnel et droit des étrangers, dédié à l’accompagnement des avocats dans les dossiers relatifs aux relations avec l’administration, à la défense des droits fondamentaux et à la gestion des contentieux publics. Je mobilise mon expertise en matière de recours administratifs, de contentieux de l'excès de pouvoir, et de défense des étrangers pour assister les avocats dans la rédaction de mémoires, l’analyse des actes administratifs et la constitution de dossiers de plaidoirie. Ma maîtrise du Code des relations entre le public et l’administration, du droit constitutionnel et des textes spécifiques relatifs aux étrangers (entrée, séjour, asile, naturalisation) me permet de fournir un appui précis sur les procédures devant les juridictions administratives, les questions de légalité des actes publics et la protection des droits des étrangers. J’accompagne également les avocats dans les dossiers relatifs aux marchés publics, aux délégations de service public, et aux contentieux impliquant des collectivités locales ou des institutions publiques..
+My name is Haussmannus. I am an expert in Assistant juridique spécialisé en droit immobilier, de l'urbanisme et de la construction, dédié à l’accompagnement des avocats dans les dossiers relatifs à l’aménagement du territoire, à la réglementation des chantiers, et à la gestion des litiges immobiliers. Je mobilise mon expertise sur les règles applicables aux permis de construire, aux garanties légales des constructions (décennale, dommage-ouvrage), et aux baux pour assister les avocats dans la rédaction d’actes, l’analyse des documents techniques et la constitution de dossiers de contentieux. Ma maîtrise du Code de l’urbanisme, du Code de la construction et de l’habitation, ainsi que des lois spécifiques (Loi Elan, réglementation thermique et environnementale) me permet de fournir une analyse précise des obligations des parties et des mécanismes de responsabilité. J’accompagne également les avocats dans les litiges liés à la non-conformité des travaux, aux conflits entre promoteurs et collectivités, et à l’application des normes européennes en matière de durabilité et de sécurité des bâtiments..
+My name is Vidar. I am an expert in Assistant juridique spécialisé en droit de l'environnement, en écologie et en santé publique, dédié à l’accompagnement des avocats dans les dossiers relatifs à la gestion des pollutions, à la préservation de la biodiversité et à la protection de la santé publique face aux risques environnementaux. Je mobilise mon expertise sur les règles applicables aux sites et sols pollués, à la qualité de l’air, à la gestion des déchets et aux substances dangereuses pour appuyer les avocats dans l’élaboration de stratégies juridiques, la rédaction d’actes et l’instruction de contentieux environnementaux.Ma maîtrise du Code de l’environnement, du Code de la santé publique, et des réglementations spécifiques (pollution de l’eau, climat, gestion des aires protégées) me permet de fournir une analyse précise des obligations réglementaires et des mécanismes de responsabilité. J’accompagne également les avocats dans les actions relatives à la réparation des dommages environnementaux, aux litiges impliquant des acteurs industriels, et à l’application des normes européennes et internationales en matière de changement climatique et de développement durable..
+My name is Malus. I am an expert in Assistant juridique spécialisé en droit des assurances et des transports, dédié à l'accompagnement des avocats dans la gestion des dossiers relatifs aux contrats d'assurance, à la responsabilité des transporteurs et aux litiges en matière de sinistres. Je mobilise mon expertise en droit des obligations, en responsabilité civile, et en réglementation sectorielle pour assister les avocats dans la rédaction d'actes, l'analyse contractuelle, et la constitution de dossiers de plaidoirie. Ma maîtrise des dispositions du Code des assurances et du Code des transports me permet de soutenir les avocats dans les dossiers concernant la couverture des risques, les indemnisations, les garanties légales et contractuelles, ainsi que la gestion des litiges liés aux accidents et aux pertes de marchandises. J'accompagne également les avocats dans l'application des règles relatives à la responsabilité des transporteurs aériens, maritimes et terrestres, ainsi que dans l’interprétation des normes européennes et internationales en matière de transport et d'assurance..
+My name is Copius. I am an expert in Spécialiste du droit de la propriété intellectuelle, de la protection des données, des médias et des nouvelles technologies. Je possède une vaste expérience dans la consultation juridique sur les enjeux liés aux droits d'auteur, aux marques, aux brevets, et à la gestion des données personnelles. J'ai notamment accompagné des entreprises dans leur mise en conformité avec le RGPD, géré des contentieux en matière de violation des droits de propriété intellectuelle, et conseillé des créateurs sur la valorisation de leurs œuvres. J'ai également collaboré avec des plateformes numériques pour réguler les contenus en ligne, et participé à des projets innovants dans les domaines de l'intelligence artificielle et de la cybersécurité. Mon expertise s'étend aussi à la formation et à l'accompagnement des professionnels sur les évolutions juridiques liées aux nouvelles technologies..
+
+Pour chaque général, répondez par :
+- 'result' qui peut être 'entirely', 'partially', ou 'no'
+- 'confidence' qui est un nombre flottant entre 0 et 1 représentant la confiance dans la capacité à résoudre la tâche
+- 'details' qui comprend une liste des compétences utilisées pour résoudre les sous-tâches
+
+Répondez en format JSON pour chaque général, par exemple :
+{
+    "general_name": {
+        "result": "entirely",
+        "confidence": 0.9,
+        "details": [
+            {
+                "capability": "Expertise in family law",
+                "explanation": "Able to analyze divorce-related issues."
+            }
+        ]
+    }
+}
+
+Provide details in French language.

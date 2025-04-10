@@ -1,4 +1,5 @@
 from .general import General
+from typing import Any
 
 
 class Dictator:
@@ -48,19 +49,19 @@ class Dictator:
         """
         return self.general.run(task)
 
-    def can_execute_task(self, task):
-        """
-        Determines whether the Dictator (via the General) has the capabilities to execute the task.
+    # def can_execute_task(self, task):
+    #     """
+    #     Determines whether the Dictator (via the General) has the capabilities to execute the task.
 
-        Args:
-            task (str): The task to evaluate.
+    #     Args:
+    #         task (str): The task to evaluate.
 
-        Returns:
-            Dict: A dictionary indicating the ability to execute the task.
-        """
-        return self.general.can_execute_task(task)
+    #     Returns:
+    #         Dict: A dictionary indicating the ability to execute the task.
+    #     """
+    #     return self.general.can_execute_task(task)
 
-    def solve_task(self, task):
+    def solve_task(self, task, **kwargs: Any):
         """
         Solves the given task using the Dictator's General.
 

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import Generator, List
 from dictatorgenai.agents.general import General
+from dictatorgenai.utils.task import Task
 
 class BaseConversation(ABC):
     """
@@ -21,7 +22,7 @@ class BaseConversation(ABC):
         pass
 
     @abstractmethod
-    async def start_conversation(self, dictator: General, generals: List[General], task: str) -> Generator[str, None, None]:
+    async def start_conversation(self, dictator: General, generals: List[General], task: Task) -> Generator[str, None, None]:
         """
         Starts the conversation between the dictator and the generals.
         

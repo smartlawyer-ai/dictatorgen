@@ -44,7 +44,7 @@ class BaseEventManager:
                 del self.events[event_type]
 
 
-    async def publish(self, event_type: str, event: Event):
+    async def publish(self, event: Event):
         """
         Publish a structured event (an instance of the Event class) to all listeners
         subscribed to the specified event type. If the listener is asynchronous, it is awaited.
@@ -57,12 +57,12 @@ class BaseEventManager:
         event_data = event.to_dict()
         
         # Notify all listeners subscribed to this event type
-        if event_type in self.subscribers:
+        if event.event_type in self.subscribers:
             tasks = []
-            tasks = [self._safe_call(listener, event_data) for listener in self.subscribers[event_type]]  # Call sync listeners directly
-            self.events[event_type].set()  
+            tasks = [self._safe_call(listener, event_data) for listener in self.subscribers[event.event_type]]  # Call sync listeners directly
+            self.events[event.event_type].set()
             await asyncio.gather(*tasks)   
-            self.events[event_type].clear() 
+            self.events[event.event_type].clear() 
     
     async def _safe_call(self, listener, event_data):
         try:

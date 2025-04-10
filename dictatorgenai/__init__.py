@@ -1,9 +1,14 @@
 # dictatorgenai/__init__.py
+__version__ = "0.1.0"
 
 from .agents.base_agent import BaseAgent
 from .agents.tool import tool
 from .agents.dictator import Dictator
 from .agents.general import General, TaskExecutionError
+from .agents.majordomo import Majordomo
+from .agents.colonel_fragmenter import ColonelFragmenter
+from .agents.legion_commander import LegionCommander
+from .agents.information_officer import InformationOfficer
 from .regimes.regime import Regime, RegimeExecutionError
 from .command_chains.command_chain import CommandChain
 from .command_chains.default_command_chain import DefaultCommandChain
@@ -15,6 +20,9 @@ from .conversations.two_agent_chat import TwoAgentChat
 from .events import BaseEventManager, EventManager, Event
 from .models.base_model import BaseModel, Message
 from .models.openai_model import OpenaiModel
+from .config.settings import DictatorSettings
+from .memories import SQLiteChatMemory, BaseChatMemory, ChatDiscussion, RedisChatMemory
+from .utils.task import Task, TaskStatus
 
 
 __all__ = [
@@ -22,6 +30,10 @@ __all__ = [
     "tool",
     "Dictator",
     "General",
+    "Majordomo",
+    "ColonelFragmenter",
+    "LegionCommander",
+    "InformationOfficer",
     "TaskExecutionError",
     "Regime",
     "RegimeExecutionError",
@@ -40,4 +52,9 @@ __all__ = [
     "BaseEventManager",
     "EventManager",
     "Event",
+    "DictatorSettings",
+    "SQLiteChatMemory",
+    "BaseChatMemory",
+    "ChatDiscussion",
+    "RedisChatMemory",
 ]
