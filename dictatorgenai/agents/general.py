@@ -3,6 +3,8 @@ import logging
 from typing import AsyncGenerator, List, Dict, Generator, Optional, Any
 
 
+from dictatorgenai.events.base_event_manager import BaseEventManager
+from dictatorgenai.events.event import Event, EventType
 from dictatorgenai.utils.task import Task 
 from dictatorgenai.steps import ToolExecutionStep
 from .base_agent import BaseAgent
@@ -49,6 +51,7 @@ class General(BaseAgent):
         coup_conditions=None,
         tools=None,
         is_dictator: bool = False,
+        event_manager: BaseEventManager | None = None,
     ):
         super().__init__(my_name_is, my_capabilities_are=my_capabilities_are ,tools=tools)
         self.my_name_is = my_name_is
@@ -59,6 +62,7 @@ class General(BaseAgent):
         self.conversation_history: List[Dict] = [] 
         self.failed_attempts = 0
         self.logger = logging.getLogger(self.my_name_is)
+        self.event_manager = event_manager
 
     # Making the agent communicate with others
     async def send_message(self, recipient: 'General', message: str, task: Task) -> str:
@@ -271,6 +275,10 @@ class General(BaseAgent):
         ]
         #print('messages', messages)
         tools_definitions = self.generate_tool_schemas()
+
+        # Publish log of solving task
+        if self.event_manager is not None:
+            await self.event_manager.publish(Event(EventType.__str__(EventType.TASK_STARTED), f"Solving task...", task.task_id, details=task.to_dict()))
 
         # Étape 1 : Traiter les appels d'outils nécessaires
         while True:

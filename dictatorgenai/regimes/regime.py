@@ -58,6 +58,9 @@ class Regime(BaseRegime):
             command_chain or DefaultCommandChain(nlp_model, confidence_threshold=0.6, event_manager=event_manager),
             event_manager
         )
+        
+        for general in self.generals:
+            general.event_manager = event_manager
 
         self.logger = logging.getLogger(self.__class__.__name__)
 
