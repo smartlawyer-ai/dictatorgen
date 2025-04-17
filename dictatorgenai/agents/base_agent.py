@@ -2,6 +2,8 @@ import logging
 from abc import ABC, abstractmethod
 from typing import Any, Callable, Dict, List, Type
 
+from dictatorgenai.utils.task import Task 
+
 class TaskExecutionError(Exception):
     """Custom exception raised when a task execution fails."""
     pass
@@ -17,7 +19,7 @@ class BaseAgent(ABC):
         tools (Dict[str, Callable]): Dictionary of registered tools for the agent.
     """
 
-    def __init__(self, my_name_is: str, tools = None):
+    def __init__(self, my_name_is: str, my_capabilities_are: List[Dict[str, str]], tools = None):
         """
         Initializes the BaseAgent with the given name.
 
@@ -25,6 +27,7 @@ class BaseAgent(ABC):
             my_name_is (str): The name of the agent.
         """
         self.my_name_is = my_name_is
+        self.my_capabilities_are = my_capabilities_are
         self.failed_attempts = 0
         self.conversation_history: List[Dict] = []  # Track the message history
         self.logger = logging.getLogger(self.my_name_is)
@@ -99,20 +102,7 @@ class BaseAgent(ABC):
             return tool(*args, **kwargs)
 
     @abstractmethod
-    async def can_execute_task(self, task: str) -> Dict:
-        """
-        Abstract method to evaluate if the agent has the capabilities to execute a task.
-
-        Args:
-            task (str): The task to be evaluated.
-
-        Returns:
-            Dict: A dictionary indicating the agent's capability to perform the task.
-        """
-        pass
-
-    @abstractmethod
-    async def solve_task(self, task: str) -> str:
+    async def solve_task(self, task: Task, **kwargs: Any) -> str:
         """
         Abstract method to solve a given task.
 
@@ -145,7 +135,7 @@ class BaseAgent(ABC):
         if task:
             self.logger.warning(f"{self.my_name_is} - Failed task: {task}")
 
-    async def receive_message(self, sender: 'BaseAgent', message: str) -> str:
+    async def receive_message(self, sender: 'BaseAgent', message: str, task: Task) -> str:
         """
         Handles receiving a message from another agent.
 
@@ -160,7 +150,7 @@ class BaseAgent(ABC):
         self.logger.info(f"{self.my_name_is} received message from {sender.my_name_is}: {message}")
         return await self.process_message(sender, message)
 
-    async def send_message(self, recipient: 'BaseAgent', message: str) -> str:
+    async def send_message(self, recipient: 'BaseAgent', message: str, task: Task) -> str:
         """
         Sends a message to another agent.
 
@@ -176,7 +166,7 @@ class BaseAgent(ABC):
         return await recipient.receive_message(self, message)
 
     @abstractmethod
-    async def process_message(self, sender: 'BaseAgent', message: str) -> str:
+    async def process_message(self, sender: 'BaseAgent', message: str, task: Task) -> str:
         """
         Processes a received message and generates a response.
 

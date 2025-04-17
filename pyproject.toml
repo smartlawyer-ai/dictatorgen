@@ -1,0 +1,46 @@
+[tool.poetry]
+name = "dictatorgenai"
+version = "0.1.2"
+description = "An agentic Python library for multi-agents collaboration"
+authors = ["Jérémie Lenoir"]
+license = "MIT License"
+readme = "README.md"
+homepage = "https://github.com/smartlawyer-ai/dictatorgen"
+repository = "https://github.com/smartlawyer-ai/dictatorgen"
+keywords = ["framework", "ai", "python", "agentic", "agent"]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.12"
+#chainlit = "1.3.2"
+fastapi = "0.115.6"
+openai = "1.58.1"
+packaging = "23.2"
+pydantic = "2.10.1"
+pydantic-core = "2.27.1"
+chainlit = "^2.1.1"
+
+[tool.poetry.extras]
+dev = ["flake8"]
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.3.4"
+watchdog = "^6.0.0"
+mkdocs = "^1.6.1"
+mkdocs-material = "^9.6.4"
+mkdocstrings = "^0.28.0"
+mkdocstrings-python = "^1.15.0"
+
+[tool.flake8]
+max-line-length = 88
+exclude = [".git", "__pycache__", "build", "dist", "venv", ".venv"]
+extend-ignore = ["E203", "E266", "E501", "W503"]
+
+[tool.pytest.ini_options]
+addopts = "-ra -q"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.scripts]
+dev-watch = "watcher:main"

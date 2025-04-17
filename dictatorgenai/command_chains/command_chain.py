@@ -1,8 +1,11 @@
 from typing import AsyncGenerator, List, Callable, Generator, Tuple, Dict
 from abc import ABC, abstractmethod
 
+from dictatorgenai.agents.base_agent import TaskExecutionError
 from dictatorgenai.conversations import BaseConversation, GroupChat
-from ..agents.general import General
+from dictatorgenai.utils.task import Task
+from dictatorgenai.agents.general import General
+from dictatorgenai.agents.assigned_general import AssignedGeneral
 
 class CommandChain(ABC):
     """
@@ -23,34 +26,45 @@ class CommandChain(ABC):
         # Default to GroupChat if no conversation type is provided
         self.conversation = conversation if conversation else GroupChat()
         
-    async def prepare_task_execution(self, generals: List[General], task: str):
+    async def prepare_task_execution(self, generals: List[General], task: Task):
         """
         Prepares the execution of a task by selecting a dictator and the generals, 
         and returning a function to execute the task.
 
         Args:
             generals (List[General]): A list of generals available for the task.
-            task (str): The task to be executed.
+            task (Task): The task to be executed.
 
         Returns:
             Tuple[General, List[General], Callable]: A tuple containing the dictator, the selected generals, 
             and a callable function to execute the task.
         """
-        # Selection of the dictator, generals, subtasks, and assignments
-        dictator, generals_to_use = await self._select_dictator_and_generals(generals, task)
+        try:
+            # Attempt to select a dictator and generals
+            dictator, generals_to_use, updated_task = await self._select_dictator_and_generals(generals, task)
+            print(f"Dictator: {dictator.my_name_is}")
+        except TaskExecutionError as e:
+            # Log the error and re-raise it, or handle it as needed
+            #self.logger.error(f"Failed to prepare task execution: {e}")
+            raise  # Re-raise the exception if you want it to propagate further
+        except Exception as e:
+            # Catch other unexpected exceptions
+            #self.logger.error(f"An unexpected error occurred: {e}")
+            raise
 
         async def execute_task() -> AsyncGenerator[str, None]:
-            async for chunk in self.solve_task(dictator, generals_to_use, task):
+            async for chunk in self.solve_task(dictator, generals_to_use, updated_task):
                 yield chunk
 
         return dictator, generals_to_use, execute_task
+
 
     @abstractmethod
     async def _select_dictator_and_generals(
         self, 
         generals: List[General], 
-        task: str
-    ) -> Tuple[General, List[General], List[str], Dict[str, General]]:
+        task: Task,
+    ) -> Tuple[AssignedGeneral, List[AssignedGeneral], Task]:
         """
         Logic for selecting the dictator and generals.
         Returns a tuple containing the dictator, the list of generals to be used, 
@@ -61,7 +75,7 @@ class CommandChain(ABC):
             task (str): The task to be solved.
 
         Returns:
-            Tuple[General, List[General], List[str], Dict[str, General]]: A tuple consisting of the selected dictator, 
+            Tuple[General, List[General], Task]: A tuple consisting of the selected dictator, 
             the list of generals, the list of subtasks, and a dictionary of subtask assignments.
         """
         pass
@@ -69,9 +83,9 @@ class CommandChain(ABC):
     @abstractmethod
     async def solve_task(
         self, 
-        dictator: General, 
-        generals: List[General], 
-        task: str,
+        dictator: AssignedGeneral, 
+        generals: List[AssignedGeneral], 
+        task: Task,
     ) -> AsyncGenerator[str, None]:
         """
         Abstract method for implementing task resolution. This method must be implemented by derived classes.

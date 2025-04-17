@@ -9,3 +9,7 @@ dist/
 .venv/
 dictatorgenai/examples/example_usage.py
 .env
+.pytest_cache/
+.chainlit/
+.files/
+.vscode/
